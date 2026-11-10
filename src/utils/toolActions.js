@@ -49,15 +49,6 @@ export async function runTool(id, input, options = {}) {
         .map(line => /^magnet:\?xt=urn:btih:/i.test(line) ? line : prefix + line)
         .join('\n')
     }
-    case 'magnet': {
-      const prefix = 'magnet:?xt=urn:btih:'
-      return value.split(/\r?\n/).map(line => {
-        const trimmed = line.trim()
-        if (!trimmed) return line
-        return /^magnet:\?xt=urn:btih:/i.test(trimmed) ? trimmed : prefix + trimmed
-      }).join('\n')
-    }
-
     case 'regex': {
       const pattern = options.pattern ?? ''
       const flags = options.flags ?? 'g'
