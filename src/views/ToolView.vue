@@ -18,8 +18,8 @@ const modes={
 }
 const modeOptions=computed(()=>modes[props.id]||[])
 watch(()=>props.id,()=>{input.value='';output.value='';error.value='';mode.value=modes[props.id]?.[0]?.[0]||'default';prefs.touch(props.id)},{immediate:true})
-const placeholder=computed(()=>({json:'粘贴 JSON 数据…',base64:'输入要编码或解码的文本…',url:'输入 URL 或需要编码的内容…','text-stats':'在这里输入或粘贴文本…',case:'例如：hello world / helloWorld / hello_world',color:'#6366f1',regex:'输入需要匹配的文本…'})[props.id]||'输入内容…')
-const description=computed(()=>({json:'校验 JSON，并将其格式化为易读结构或压缩为单行。',base64:'支持 UTF-8 中文文本的 Base64 编码和解码。',url:'对 URL 组件进行百分号编码或解码。','text-stats':'统计字符、非空白字符、单词、行数以及 UTF-8 字节数。',case:'支持 camelCase、PascalCase、snake_case、kebab-case 和大小写转换。',color:'输入 HEX 颜色值，查看对应 RGB 和 HSL。',regex:'输入正则表达式和 flags，查看所有匹配项。'})[props.id])
+const placeholder=computed(()=>({json:'粘贴 JSON 数据…',base64:'输入要编码或解码的文本…',url:'输入 URL 或需要编码的内容…','text-stats':'在这里输入或粘贴文本…',case:'例如：hello world / helloWorld / hello_world',color:'#6366f1',regex:'输入需要匹配的文本…',magnet:'每行输入一个 BTIH 哈希或磁力链接…'})[props.id]||'输入内容…')
+const description=computed(()=>({json:'校验 JSON，并将其格式化为易读结构或压缩为单行。',base64:'支持 UTF-8 中文文本的 Base64 编码和解码。',url:'对 URL 组件进行百分号编码或解码。','text-stats':'统计字符、非空白字符、单词、行数以及 UTF-8 字节数。',case:'支持 camelCase、PascalCase、snake_case、kebab-case 和大小写转换。',color:'输入 HEX 颜色值，查看对应 RGB 和 HSL。',regex:'输入正则表达式和 flags，查看所有匹配项。',magnet:'每行输入一个 BTIH 哈希或磁力链接；已有标准磁力链接会保持不变，缺少前缀的内容会自动补全。'})[props.id])
 async function execute(){
   error.value='';copied.value=false;busy.value=true
   try {

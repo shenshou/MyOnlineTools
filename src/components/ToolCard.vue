@@ -1,11 +1,11 @@
 <script setup>
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Star, ArrowUpRight, FileText, Code2, ArrowLeftRight, Clock3, WandSparkles, Braces, Binary, Link, ChartNoAxesColumn, CaseSensitive, ListFilter, ArrowDownAZ, CalendarClock, Palette, Fingerprint, KeyRound, ShieldCheck, Regex, Code } from 'lucide-vue-next'
+import { Star, ArrowUpRight, FileText, Code2, ArrowLeftRight, Clock3, WandSparkles, Braces, Binary, Link, ChartNoAxesColumn, CaseSensitive, ListFilter, ArrowDownAZ, CalendarClock, Palette, Fingerprint, KeyRound, ShieldCheck, Regex, Code, Magnet } from 'lucide-vue-next'
 import { usePreferences } from '../stores/preferences'
 const props=defineProps({tool:Object})
 const prefs=usePreferences()
-const icons={FileText,Code2,ArrowLeftRight,Clock3,WandSparkles,Braces,Binary,Link,ChartNoAxesColumn,CaseSensitive,ListFilter,ArrowDownAZ,CalendarClock,Palette,Fingerprint,KeyRound,ShieldCheck,Regex,Code}
+const icons={FileText,Code2,ArrowLeftRight,Clock3,WandSparkles,Braces,Binary,Link,ChartNoAxesColumn,CaseSensitive,ListFilter,ArrowDownAZ,CalendarClock,Palette,Fingerprint,KeyRound,ShieldCheck,Regex,Code,Magnet}
 const Icon=computed(()=>icons[props.tool.icon]||FileText)
 </script>
 <template>
