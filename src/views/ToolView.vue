@@ -9,26 +9,23 @@ const props=defineProps({id:String})
 const router=useRouter(), prefs=usePreferences()
 const tool=computed(()=>tools.find(t=>t.id===props.id))
 const input=ref(''), output=ref(''), error=ref(''), copied=ref(false), busy=ref(false)
-const mode=ref('format'), length=ref(16), count=ref(1), pattern=ref(''), flags=ref('g')
+const mode=ref('format'), pattern=ref(''), flags=ref('g')
 const lower=ref(true), upper=ref(true), numbers=ref(true), symbols=ref(false)
 const modes={
  json:[['format','格式化'],['minify','压缩']],
  base64:[['encode','编码'],['decode','解码']],
  url:[['encode','编码'],['decode','解码']],
  case:[['camel','camelCase'],['pascal','PascalCase'],['snake','snake_case'],['kebab','kebab-case'],['upper','UPPERCASE'],['lower','lowercase']],
- 'sort-lines':[['asc','升序'],['desc','降序']],
  timestamp:[['to-date','时间戳 → 日期'],['to-ts','日期 → 时间戳']],
- hash:[['SHA-256','SHA-256'],['SHA-1','SHA-1'],['SHA-512','SHA-512']],
- html:[['encode','转义'],['decode','反转义']]
 }
 const modeOptions=computed(()=>modes[props.id]||[])
 watch(()=>props.id,()=>{input.value='';output.value='';error.value='';mode.value=modes[props.id]?.[0]?.[0]||'default';prefs.touch(props.id)},{immediate:true})
-const placeholder=computed(()=>({json:'粘贴 JSON 数据…',base64:'输入要编码或解码的文本…',url:'输入 URL 或需要编码的内容…','text-stats':'在这里输入或粘贴文本…',case:'例如：hello world / helloWorld / hello_world',dedupe:'每行输入一条内容…','sort-lines':'每行输入一条内容…',timestamp:'输入 Unix 时间戳或日期时间…',color:'#6366f1',uuid:'点击生成按钮创建 UUID',password:'可调整下方选项后生成密码',hash:'输入需要计算哈希的文本…',regex:'输入需要匹配的文本…',html:'输入包含特殊字符的 HTML 文本…'})[props.id]||'输入内容…')
-const description=computed(()=>({json:'校验 JSON，并将其格式化为易读结构或压缩为单行。',base64:'支持 UTF-8 中文文本的 Base64 编码和解码。',url:'对 URL 组件进行百分号编码或解码。','text-stats':'统计字符、非空白字符、单词、行数以及 UTF-8 字节数。',case:'支持 camelCase、PascalCase、snake_case、kebab-case 和大小写转换。',dedupe:'逐行去重，保留首次出现的顺序。','sort-lines':'支持自然排序，数字按数值顺序排列。',timestamp:'自动识别秒级或毫秒级 Unix 时间戳。',color:'输入 HEX 颜色值，查看对应 RGB 和 HSL。',uuid:'使用浏览器安全随机数生成 UUID v4。',password:'使用浏览器加密安全随机数生成密码。',hash:'使用 Web Crypto API 在本地计算摘要。',regex:'输入正则表达式和 flags，查看所有匹配项。',html:'对 HTML 特殊字符进行转义或反转义。'})[props.id])
+const placeholder=computed(()=>({json:'粘贴 JSON 数据…',base64:'输入要编码或解码的文本…',url:'输入 URL 或需要编码的内容…','text-stats':'在这里输入或粘贴文本…',case:'例如：hello world / helloWorld / hello_world',color:'#6366f1',regex:'输入需要匹配的文本…'})[props.id]||'输入内容…')
+const description=computed(()=>({json:'校验 JSON，并将其格式化为易读结构或压缩为单行。',base64:'支持 UTF-8 中文文本的 Base64 编码和解码。',url:'对 URL 组件进行百分号编码或解码。','text-stats':'统计字符、非空白字符、单词、行数以及 UTF-8 字节数。',case:'支持 camelCase、PascalCase、snake_case、kebab-case 和大小写转换。',color:'输入 HEX 颜色值，查看对应 RGB 和 HSL。',regex:'输入正则表达式和 flags，查看所有匹配项。'})[props.id])
 async function execute(){
   error.value='';copied.value=false;busy.value=true
   try {
-    output.value=await runTool(props.id,input.value,{mode:mode.value,length:length.value,count:count.value,lower:lower.value,upper:upper.value,numbers:numbers.value,symbols:symbols.value,pattern:pattern.value,flags:flags.value})
+    output.value=await runTool(props.id,input.value,{mode:mode.value,pattern:pattern.value,flags:flags.value})
   } catch(e){output.value='';error.value=e.message||'处理失败，请检查输入内容'}
   finally{busy.value=false}
 }
