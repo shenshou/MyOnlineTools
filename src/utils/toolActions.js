@@ -29,18 +29,6 @@ export async function runTool(id, input, options = {}) {
     }
     case 'dedupe': return [...new Set(value.split(/\r?\n/))].join('\n')
     case 'sort-lines': return value.split(/\r?\n/).sort((a,b) => options.mode === 'desc' ? b.localeCompare(a, undefined, {numeric:true}) : a.localeCompare(b, undefined, {numeric:true})).join('\n')
-    case 'timestamp': {
-      if (options.mode === 'to-date') {
-        const n = Number(value.trim())
-        if (!Number.isFinite(n)) throw new Error('请输入有效的 Unix 时间戳')
-        const d = new Date(Math.abs(n) < 1e12 ? n * 1000 : n)
-        if (Number.isNaN(d.getTime())) throw new Error('时间戳超出有效范围')
-        return `本地时间：${d.toLocaleString()}\nUTC：${d.toISOString()}\n秒：${Math.floor(d.getTime()/1000)}\n毫秒：${d.getTime()}`
-      }
-      const d = value.trim() ? new Date(value) : new Date()
-      if (Number.isNaN(d.getTime())) throw new Error('无法识别该日期时间')
-      return `秒：${Math.floor(d.getTime()/1000)}\n毫秒：${d.getTime()}`
-    }
     case 'color': {
       const hex = value.trim().replace('#','')
       if (!/^(?:[\da-f]{3}|[\da-f]{6})$/i.test(hex)) throw new Error('请输入 3 位或 6 位 HEX 颜色值，例如 #6366f1')
