@@ -10,13 +10,11 @@ const router=useRouter(), prefs=usePreferences()
 const tool=computed(()=>tools.find(t=>t.id===props.id))
 const input=ref(''), output=ref(''), error=ref(''), copied=ref(false), busy=ref(false)
 const mode=ref('format'), pattern=ref(''), flags=ref('g')
-const lower=ref(true), upper=ref(true), numbers=ref(true), symbols=ref(false)
 const modes={
  json:[['format','格式化'],['minify','压缩']],
  base64:[['encode','编码'],['decode','解码']],
  url:[['encode','编码'],['decode','解码']],
  case:[['camel','camelCase'],['pascal','PascalCase'],['snake','snake_case'],['kebab','kebab-case'],['upper','UPPERCASE'],['lower','lowercase']],
- timestamp:[['to-date','时间戳 → 日期'],['to-ts','日期 → 时间戳']],
 }
 const modeOptions=computed(()=>modes[props.id]||[])
 watch(()=>props.id,()=>{input.value='';output.value='';error.value='';mode.value=modes[props.id]?.[0]?.[0]||'default';prefs.touch(props.id)},{immediate:true})
@@ -38,13 +36,10 @@ function clear(){input.value='';output.value='';error.value=''}
     <div class="tool-intro"><div class="tool-intro-icon" :class="tool.color"><WandSparkles :size="23"/></div><div><div class="breadcrumb">工具箱 <span>/</span> {{tool.name}}</div><h1>{{tool.name}}</h1><p>{{description}}</p></div><button class="favorite-large" :class="{selected:prefs.favorites.includes(tool.id)}" @click="prefs.toggleFavorite(tool.id)"><Star :size="17" :fill="prefs.favorites.includes(tool.id)?'currentColor':'none'"/>{{prefs.favorites.includes(tool.id)?'已收藏':'收藏'}}</button></div>
     <div class="workspace">
       <div class="workspace-toolbar"><div class="mode-tabs" v-if="modeOptions.length"><button v-for="m in modeOptions" :key="m[0]" :class="{active:mode===m[0]}" @click="mode=m[0]">{{m[1]}}</button></div><span v-else class="workspace-label">输入与设置</span><button class="text-button" @click="clear"><RotateCcw :size="14"/> 清空</button></div>
-      <div v-if="tool.id==='password'" class="options-panel"><label>密码长度 <b>{{length}}</b><input v-model.number="length" type="range" min="4" max="64"/></label><div class="check-options"><label><input v-model="lower" type="checkbox"/> 小写字母</label><label><input v-model="upper" type="checkbox"/> 大写字母</label><label><input v-model="numbers" type="checkbox"/> 数字</label><label><input v-model="symbols" type="checkbox"/> 特殊符号</label></div></div>
-      <div v-if="tool.id==='uuid'" class="options-panel"><label>生成数量 <input v-model.number="count" type="number" min="1" max="100" class="number-input"/></label></div>
       <div v-if="tool.id==='regex'" class="regex-options"><label>正则表达式<input v-model="pattern" placeholder="例如：\d+"/></label><label>Flags<input v-model="flags" placeholder="g" class="flags-input"/></label></div>
-      <div v-if="tool.id==='timestamp' && mode==='to-ts'" class="hint-panel"><Info :size="15"/> 可输入日期，例如 2026-11-11 12:30:00；留空则使用当前时间。</div>
       <div class="editor-grid"><section class="editor-pane"><div class="pane-heading"><span>输入</span><span>{{input.length}} 字符</span></div><textarea v-model="input" :placeholder="placeholder" spellcheck="false"></textarea></section><section class="editor-pane output-pane"><div class="pane-heading"><span>结果</span><button class="copy-button" :disabled="!output" @click="copy"><Check v-if="copied" :size="14"/><Copy v-else :size="14"/>{{copied?'已复制':'复制结果'}}</button></div><pre v-if="output">{{output}}</pre><div v-else class="output-placeholder"><span>✧</span><p>处理结果将在这里显示</p></div></section></div>
       <div v-if="error" class="error-message">{{error}}</div>
-      <div class="workspace-bottom"><span><Info :size="14"/> 所有处理均在当前浏览器本地完成</span><button class="btn-primary" :disabled="busy" @click="execute"><Play :size="15" fill="currentColor"/>{{busy?'处理中…':tool.id==='uuid'||tool.id==='password'?'生成':'立即处理'}}</button></div>
+      <div class="workspace-bottom"><span><Info :size="14"/> 所有处理均在当前浏览器本地完成</span><button class="btn-primary" :disabled="busy" @click="execute"><Play :size="15" fill="currentColor"/>{{busy?'处理中…':'立即处理'}}</button></div>
     </div>
     <div class="tip-card"><span>✦</span><div><b>使用提示</b><p>{{tool.desc}} 处理过程不会将你的输入内容发送到服务器。</p></div></div>
   </div>
