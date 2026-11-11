@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   Search, Plus, LayoutGrid, List, Star, ExternalLink, Pencil, Trash2, X, Save,
   Download, Upload, LogIn, LogOut, Check, AlertCircle, Globe, ChevronDown, ArrowUpDown,
@@ -11,6 +12,7 @@ import {
   setAccessToken, clearAccessToken, verifyAdminToken, restoreAdminSession, saveNavigationData, fetchNavigationData,
 } from '../modules/navigation/github'
 
+const route = useRoute()
 const data = ref(structuredClone(defaultNavigationData))
 const baseline = ref('')
 const loading = ref(true)
@@ -113,6 +115,8 @@ async function loadData() {
 }
 onMounted(async () => {
   await loadData()
+  const targetWebsite = data.value.websites.find(website => website.id === route.query.websiteId)
+  if (targetWebsite) selectedWebsite.value = targetWebsite
   try {
     const account = await restoreAdminSession()
     admin.value = Boolean(account)
@@ -190,7 +194,10 @@ function moveCategory(category, direction) {
   target.sortOrder = order
 }
 function toggleFavorite(item) {
-  if (!admin.value) { showAdmin.value = true; return }
+  if (!admin.value) {
+    window.alert('只有管理员模式才能修改公共收藏状态。')
+    return
+  }
   item.favorite = !item.favorite
   item.updatedAt = Date.now()
 }
@@ -205,6 +212,7 @@ async function saveToGitHub() {
     const sha = await saveNavigationData(payload)
     data.value = payload
     baseline.value = snapshot()
+    window.dispatchEvent(new CustomEvent('mot-navigation-data-updated', { detail: payload }))
     markMessage(`已保存到 GitHub。Commit：${sha.slice(0,7)}`)
   } catch (error) {
     if (error.status === 409 || error.status === 422) markError('保存冲突：仓库数据可能已被其他操作更新。请重新加载最新数据，再重新应用你的修改。')
@@ -357,7 +365,7 @@ function iconFor(category) {
           <article v-for="item in filtered" :key="item.id" class="website-card">
             <div class="website-card-top">
               <WebsiteFavicon :website="item" :size="34"/>
-              <button class="website-favorite" :class="{selected:item.favorite}" :aria-label="item.favorite?'取消收藏':'收藏'"  :disabled="!admin" @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></button>
+              <button class="website-favorite" :class="{selected:item.favorite}" :aria-label="item.favorite?'取消收藏':'收藏'"  @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></button>
             </div>
             <button class="website-name" @click="openWebsite(item)">{{item.name}} <ExternalLink :size="12"/></button>
             <div class="website-domain">{{domainOf(item.url)}}</div>
@@ -371,7 +379,7 @@ function iconFor(category) {
             <span class="website-list-icon"><WebsiteFavicon :website="item" :size="22"/></span>
             <div class="website-list-main"><button class="website-name" @click="openWebsite(item)">{{item.name}} <ExternalLink :size="12"/></button><span>{{domainOf(item.url)}}</span><p>{{item.description || '暂无简介'}}</p></div>
             <span class="website-list-category">{{data.categories.find(c=>c.id===item.categoryId)?.name || '未分类'}}</span>
-            <button class="website-favorite" :class="{selected:item.favorite}" :disabled="!admin" @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></button>
+            <button class="website-favorite" :class="{selected:item.favorite}" @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></button>
             <button class="website-detail-link" @click="selectedWebsite=item">详情</button>
           </div>
         </div>
