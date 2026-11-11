@@ -92,18 +92,21 @@ async function loadData() {
 }
 onMounted(loadData)
 
-function openAdd() {\n  if (!admin.value) { showAdmin.value = true; return }
+function openAdd() {
+  if (!admin.value) { showAdmin.value = true; return }
   editingId.value = null
   form.value = { ...emptyForm(), categoryId: selectedCategory.value !== 'all' ? selectedCategory.value : (data.value.categories[0]?.id || 'other') }
   showForm.value = true
 }
-function openEdit(item) {\n  if (!admin.value) { showAdmin.value = true; return }
+function openEdit(item) {
+  if (!admin.value) { showAdmin.value = true; return }
   editingId.value = item.id
   form.value = { ...item, tagsText: (item.tags || []).join(', ') }
   selectedWebsite.value = null
   showForm.value = true
 }
-function saveForm() {\n  if (!admin.value) { showAdmin.value = true; return }
+function saveForm() {
+  if (!admin.value) { showAdmin.value = true; return }
   try {
     const name = form.value.name.trim()
     if (!name) throw new Error('请填写网站名称')
@@ -126,13 +129,15 @@ function saveForm() {\n  if (!admin.value) { showAdmin.value = true; return }
     markMessage('更改已暂存在当前页面，请点击「保存到 GitHub」同步。')
   } catch (error) { markError(error.message || '请检查输入内容') }
 }
-function deleteWebsite(item) {\n  if (!admin.value) { showAdmin.value = true; return }
+function deleteWebsite(item) {
+  if (!admin.value) { showAdmin.value = true; return }
   if (!window.confirm(`确定删除「${item.name}」吗？此操作将在保存后写入仓库。`)) return
   data.value.websites = data.value.websites.filter(w => w.id !== item.id)
   selectedWebsite.value = null
   markMessage('已删除，尚未同步到 GitHub。')
 }
-function toggleFavorite(item) {\n  if (!admin.value) { showAdmin.value = true; return } item.favorite = !item.favorite; item.updatedAt = Date.now() }
+function toggleFavorite(item) {
+  if (!admin.value) { showAdmin.value = true; return } item.favorite = !item.favorite; item.updatedAt = Date.now() }
 function openWebsite(item) { window.open(item.url, '_blank', 'noopener,noreferrer') }
 
 async function saveToGitHub() {
@@ -171,7 +176,8 @@ function logout() {
   showAdmin.value = false
   markMessage('已退出管理员模式。')
 }
-async function importData() {\n  if (!admin.value) { showAdmin.value = true; return }
+async function importData() {
+  if (!admin.value) { showAdmin.value = true; return }
   try {
     const incoming = JSON.parse(importText.value)
     if (incoming.schemaVersion !== 1 || !Array.isArray(incoming.categories) || !Array.isArray(incoming.websites)) throw new Error('JSON 结构不符合网址导航数据格式')
@@ -206,21 +212,24 @@ function exportData() {
   a.href = url; a.download = 'navigation.json'; a.click()
   URL.revokeObjectURL(url)
 }
-function addCategory() {\n  if (!admin.value) { showAdmin.value = true; return }
+function addCategory() {
+  if (!admin.value) { showAdmin.value = true; return }
   const name = newCategory.value.trim()
   if (!name) return
   if (data.value.categories.some(c => c.name === name)) { markError('分类名称已存在'); return }
   data.value.categories.push({ id: `custom-${crypto.randomUUID()}`, name, icon: 'folder', sortOrder: data.value.categories.length + 1 })
   newCategory.value = ''
 }
-function renameCategory(category) {\n  if (!admin.value) { showAdmin.value = true; return }
+function renameCategory(category) {
+  if (!admin.value) { showAdmin.value = true; return }
   const name = categoryEdit.value?.name?.trim()
   if (!name) return
   if (data.value.categories.some(c => c.id !== category.id && c.name === name)) { markError('分类名称已存在'); return }
   category.name = name
   categoryEdit.value = null
 }
-function removeCategory(category) {\n  if (!admin.value) { showAdmin.value = true; return }
+function removeCategory(category) {
+  if (!admin.value) { showAdmin.value = true; return }
   if (data.value.categories.length <= 1) { markError('至少保留一个分类'); return }
   const target = data.value.categories.find(c => c.id !== category.id)
   if (!window.confirm(`删除「${category.name}」并将其中网址移动到「${target.name}」？`)) return
