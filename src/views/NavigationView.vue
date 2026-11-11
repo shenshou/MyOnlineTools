@@ -7,8 +7,7 @@ import {
 } from 'lucide-vue-next'
 import { defaultNavigationData } from '../modules/navigation/defaultData'
 import {
-  beginDeviceFlow, pollDeviceToken, setAccessToken, clearAccessToken,
-  verifyAdminToken, hasAccessToken, saveNavigationData,
+  setAccessToken, clearAccessToken, verifyAdminToken, saveNavigationData,
 } from '../modules/navigation/github'
 
 const data = ref(structuredClone(defaultNavigationData))
@@ -30,9 +29,7 @@ const showCategoryManager = ref(false)
 const busy = ref(false)
 const message = ref('')
 const errorMessage = ref('')
-const clientId = ref(localStorage.getItem('mot-github-client-id') || '')
-const deviceInfo = ref(null)
-const deviceStatus = ref('')
+const adminTokenInput = ref('')
 const admin = ref(false)
 const form = ref(emptyForm())
 const importText = ref('')
@@ -154,50 +151,23 @@ async function saveToGitHub() {
   } finally { busy.value = false }
 }
 
-async function startLogin() {
-  if (!clientId.value.trim()) { markError('请先填写 GitHub OAuth App 的 Client ID'); return }
+async function loginAdmin() {
+  const token = adminTokenInput.value.trim()
+  if (!token) { markError('请填写 Fine-grained Personal Access Token'); return }
   busy.value = true
   try {
-    localStorage.setItem('mot-github-client-id', clientId.value.trim())
-    deviceInfo.value = await beginDeviceFlow(clientId.value.trim())
-    deviceStatus.value = 'waiting'
-    markMessage('请在 GitHub 页面输入上方设备码完成授权。')
-    pollForToken()
-  } catch (error) { markError(error.message) }
-  finally { busy.value = false }
-}
-async function pollForToken() {
-  const info = deviceInfo.value
-  if (!info) return
-  const expiresAt = Date.now() + info.expires_in * 1000
-  let interval = Math.max(5, info.interval || 5) * 1000
-  while (Date.now() < expiresAt && deviceInfo.value === info) {
-    await new Promise(resolve => setTimeout(resolve, interval))
-    if (deviceInfo.value !== info) return
-    try {
-      const token = await pollDeviceToken(clientId.value.trim(), info.device_code)
-      if (token) {
-        const account = await verifyAdminToken(token)
-        setAccessToken(token)
-        admin.value = true
-        deviceStatus.value = 'authorized'
-        deviceInfo.value = null
-        markMessage(`已授权：${account}。访问令牌仅保存在当前页面内存中。`)
-        return
-      }
-    } catch (error) {
-      deviceStatus.value = 'error'
-      markError(error.message)
-      return
-    }
-  }
-  if (deviceInfo.value === info) { deviceStatus.value = 'expired'; deviceInfo.value = null; markError('设备授权码已过期，请重新授权。') }
+    const account = await verifyAdminToken(token)
+    setAccessToken(token)
+    admin.value = true
+    adminTokenInput.value = ''
+    markMessage(`已授权：${account}。访问令牌仅保存在当前页面内存中。`)
+  } catch (error) {
+    markError(error.message || 'GitHub 授权失败')
+  } finally { busy.value = false }
 }
 function logout() {
   clearAccessToken()
   admin.value = false
-  deviceInfo.value = null
-  deviceStatus.value = ''
   showAdmin.value = false
   markMessage('已退出管理员模式。')
 }
@@ -381,11 +351,10 @@ function iconFor(category) {
         <div class="nav-modal-body">
           <div v-if="admin" class="nav-authorized"><Check :size="20"/>当前已获得仓库写入权限。访问令牌仅保存在当前页面内存中。</div>
           <template v-else>
-            <p>通过 GitHub Device Flow 授权，不需要把 Token 写入网站源码。授权后可以保存网址数据。</p>
-            <label class="nav-field-label">OAuth App Client ID<input v-model="clientId" placeholder="填写 GitHub OAuth App 的 Client ID"/></label>
-            <button class="nav-btn nav-btn-primary nav-full" :disabled="busy || deviceStatus==='waiting'" @click="startLogin"><LogIn :size="15"/>开始 GitHub 授权</button>
-            <div v-if="deviceInfo" class="nav-device-code"><span>在 GitHub 输入此设备码</span><strong>{{deviceInfo.user_code}}</strong><a :href="deviceInfo.verification_uri" target="_blank" rel="noreferrer">打开 GitHub 授权页面 <ExternalLink :size="13"/></a><small>完成授权后页面会自动检测。有效期约 {{Math.ceil(deviceInfo.expires_in/60)}} 分钟。</small></div>
-            <p class="nav-security-note"><Info :size="14"/>首次使用需要创建一个启用 Device Flow 的 GitHub OAuth App，并允许 public_repo 权限。只需填写公开的 Client ID；访问令牌不会持久化保存。</p>
+            <p>使用 GitHub Fine-grained Personal Access Token 授权。令牌不会写入网站源码，也不会保存到浏览器本地存储。</p>
+            <label class="nav-field-label">Personal Access Token<input v-model="adminTokenInput" type="password" autocomplete="off" placeholder="github_pat_…"/></label>
+            <button class="nav-btn nav-btn-primary nav-full" :disabled="busy" @click="loginAdmin"><LogIn :size="15"/>{{busy ? '正在验证…' : '验证并登录'}}</button>
+            <p class="nav-security-note"><Info :size="14"/>请在 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">GitHub 设置</a>创建 Fine-grained token：Repository access 仅选择 shenshou/MyOnlineTools；Repository permissions 中将 Contents 设为 Read and write。建议设置有效期。不要把令牌发给任何人。</p>
           </template>
         </div>
         <div class="nav-modal-actions"><button v-if="admin" class="nav-btn nav-btn-light nav-danger" @click="logout"><LogOut :size="15"/>退出管理员</button><button class="nav-btn nav-btn-light" @click="showAdmin=false">关闭</button></div>

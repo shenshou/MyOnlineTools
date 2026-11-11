@@ -8,7 +8,6 @@ let accessToken = ''
 
 export function setAccessToken(token) { accessToken = token || '' }
 export function clearAccessToken() { accessToken = '' }
-export function hasAccessToken() { return Boolean(accessToken) }
 
 async function api(path, options = {}) {
   const response = await fetch(API + path, {
@@ -27,29 +26,6 @@ async function api(path, options = {}) {
     throw error
   }
   return body
-}
-
-export async function beginDeviceFlow(clientId) {
-  const response = await fetch('https://github.com/login/device/code', {
-    method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ client_id: clientId, scope: 'public_repo' }),
-  })
-  const data = await response.json()
-  if (!response.ok || data.error) throw new Error(data.error_description || data.error || '无法启动 GitHub 授权')
-  return data
-}
-
-export async function pollDeviceToken(clientId, deviceCode) {
-  const response = await fetch('https://github.com/login/oauth/access_token', {
-    method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ client_id: clientId, device_code: deviceCode, grant_type: 'urn:ietf:params:oauth:grant-type:device_code' }),
-  })
-  const data = await response.json()
-  if (data.access_token) return data.access_token
-  if (data.error === 'authorization_pending' || data.error === 'slow_down') return null
-  throw new Error(data.error_description || data.error || 'GitHub 授权失败')
 }
 
 export async function verifyAdminToken(token) {
