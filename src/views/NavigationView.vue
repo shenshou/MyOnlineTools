@@ -89,7 +89,12 @@ async function loadData() {
     if (!isValidNavigationData(remote)) throw new Error('网址数据格式不正确')
     data.value = remote
     baseline.value = snapshot()
-    try { sessionStorage.setItem(NAVIGATION_CACHE_KEY, JSON.stringify(remote)) } catch { /* 缓存空间不足时不影响正常读取 */ }
+    try {
+      const serialized = JSON.stringify(remote)
+      if (sessionStorage.getItem(NAVIGATION_CACHE_KEY) !== serialized) {
+        sessionStorage.setItem(NAVIGATION_CACHE_KEY, serialized)
+      }
+    } catch { /* 缓存空间不足时不影响正常读取 */ }
   } catch (error) {
     // 网络或 GitHub 暂时异常时，保留最后一次成功读取的数据，不用空默认数据覆盖页面。
     try {
