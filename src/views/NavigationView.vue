@@ -411,7 +411,7 @@ function iconFor(category) {
     </div>
 
     <Modal v-model="showForm" :title="editingId ? '编辑网址' : '添加网址'" size="lg">
-        <div class="nav-modal-head"><h2>{{editingId ? '编辑网址' : '添加网址'}}</h2><button @click="showForm=false"><X/></button></div>
+        
         <form @submit.prevent="saveForm" class="nav-form">
           <label>网站名称 <b>*</b><input v-model="form.name" required maxlength="100" placeholder="例如：OpenAI"/></label>
           <label>网址 <b>*</b><input v-model="form.url" required placeholder="https://example.com"/></label>
@@ -425,7 +425,7 @@ function iconFor(category) {
       </Modal>
 
         <Modal v-model="showAdmin" title="GitHub 管理员授权" size="md">
-        <div class="nav-modal-head"><h2>GitHub 管理员授权</h2><button @click="showAdmin=false"><X/></button></div>
+        
         <div class="nav-modal-body">
           <div v-if="admin" class="nav-authorized"><Check :size="20"/>当前已获得仓库写入权限。访问令牌仅保存在当前页面内存中。</div>
           <template v-else>
@@ -439,18 +439,18 @@ function iconFor(category) {
       </Modal>
 
         <Modal v-model="showImport" title="导入网址数据" size="md">
-        <div class="nav-modal-head"><h2>导入网址数据</h2><button @click="showImport=false"><X/></button></div>
+        
         <div class="nav-modal-body"><p>选择此前导出的 navigation.json 文件，或直接粘贴 JSON 内容。</p><label class="nav-file-pick"><FileJson :size="17"/>选择 JSON 文件<input type="file" accept=".json,application/json" @change="openImportFile"/></label><textarea v-model="importText" rows="9" placeholder="粘贴 JSON 数据…"></textarea><div class="nav-radio-row"><label><input v-model="importMode" type="radio" value="merge"/>合并导入（按网址去重）</label><label><input v-model="importMode" type="radio" value="replace"/>覆盖导入</label></div></div>
         <div class="nav-modal-actions"><button class="nav-btn nav-btn-light" @click="showImport=false">取消</button><button class="nav-btn nav-btn-primary" @click="importData"><Upload :size="15"/>开始导入</button></div>
       </Modal>
 
         <Modal v-model="showCategoryManager" title="管理分类" size="lg">
-        <div class="nav-modal-head"><h2>管理分类</h2><button @click="showCategoryManager=false"><X/></button></div>
+        
         <div class="nav-modal-body"><div class="nav-add-category"><input v-model="newCategory" placeholder="输入新分类名称" @keydown.enter.prevent="addCategory"/><button class="nav-btn nav-btn-primary" @click="addCategory"><Plus :size="14"/>添加</button></div><div v-for="c in data.categories" :key="c.id" class="nav-category-edit"><span>{{iconFor(c)}}</span><input v-if="categoryEdit!==null && categoryEdit.id===c.id" v-model="categoryEdit.name" @keydown.enter="renameCategory(c)"/><strong v-else>{{c.name}}</strong><select v-model="c.icon" aria-label="分类图标"><option value="bot">🤖 AI</option><option value="code">💻 开发</option><option value="palette">🎨 设计</option><option value="clapperboard">🎬 娱乐</option><option value="download">⬇️ 下载</option><option value="graduation-cap">🎓 学习</option><option value="globe">🌐 实用</option><option value="folder">📁 文件夹</option></select><span class="nav-category-count">{{categoryCounts[c.id] || 0}} 个网址</span><button class="nav-icon-action" @click="moveCategory(c,-1)" title="上移分类"><ArrowUp :size="14"/></button><button class="nav-icon-action" @click="moveCategory(c,1)" title="下移分类"><ArrowDown :size="14"/></button><button class="nav-icon-action" @click="categoryEdit={id:c.id,name:c.name}"><Pencil :size="14"/></button><button class="nav-icon-action nav-danger" @click="removeCategory(c)"><Trash2 :size="14"/></button><button v-if="categoryEdit!==null && categoryEdit.id===c.id" class="nav-icon-action" @click="renameCategory(c)"><Check :size="14"/></button></div></div>
         <div class="nav-modal-actions"><button class="nav-btn nav-btn-light" @click="showCategoryManager=false">完成</button></div>
       </Modal>
 
-        <div v-if="dirty && admin" class="nav-save-bar"><span><AlertCircle :size="16"/>有未保存的更改</span><button class="nav-btn nav-btn-primary" :disabled="busy" @click="saveToGitHub"><Save :size="15"/>{{busy ? '正在保存…' : '保存到 GitHub'}}</button></div>
+        <div v-if="dirty && admin" class="nav-save-bar"><span><AlertCircle :size="16"/>有未保存的更改</span><Button class="nav-btn nav-btn-primary" :loading="busy" :disabled="busy" @click="saveToGitHub"><Save :size="15"/>{{busy ? '正在保存…' : '保存到 GitHub'}}</Button></div>
   </div>
 </template>
 <style scoped>
