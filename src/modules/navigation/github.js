@@ -84,3 +84,42 @@ export async function saveNavigationData(data) {
   })
   return result.commit.sha
 }
+
+export async function fetchNavigationData() {
+  const path = `/repos/${OWNER}/${REPO}/contents/${DATA_PATH}?ref=${BRANCH}&_=${Date.now()}`
+
+  // 管理员已登录时，通过 Contents API 读取 main 分支的最新文件，
+  // 避免 raw 文件 CDN 缓存短暂落后于刚提交的数据。
+  if (accessToken) {
+    const response = await fetch(API + path, {
+      headers: {
+        Accept: 'application/vnd.github.raw+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: 'no-store',
+    })
+    if (!response.ok) {
+      const detail = await response.text()
+      const error = new Error(`从 GitHub 读取最新网址数据失败（${response.status}）：${detail.slice(0, 180)}`)
+      error.status = response.status
+      throw error
+    }
+    const content = await response.text()
+    const parsed = JSON.parse(content)
+    if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.categories) || !Array.isArray(parsed.websites)) {
+      throw new Error('GitHub 返回的网址数据格式不正确')
+    }
+    return parsed
+  }
+
+  // 普通访客读取公开 JSON；使用唯一查询参数绕过中间缓存。
+  const publicUrl = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${DATA_PATH}?v=${Date.now()}`
+  const response = await fetch(publicUrl, { cache: 'no-store' })
+  if (!response.ok) throw new Error(`读取公开网址数据失败（HTTP ${response.status}）`)
+  const parsed = await response.json()
+  if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.categories) || !Array.isArray(parsed.websites)) {
+    throw new Error('公开网址数据格式不正确')
+  }
+  return parsed
+}

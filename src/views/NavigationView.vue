@@ -6,8 +6,9 @@ import {
   Settings, FileJson, RefreshCw, Info, Bookmark, CircleHelp, ArrowUp, ArrowDown
 } from 'lucide-vue-next'
 import { defaultNavigationData } from '../modules/navigation/defaultData'
+import WebsiteFavicon from '../modules/navigation/components/WebsiteFavicon.vue'
 import {
-  setAccessToken, clearAccessToken, verifyAdminToken, restoreAdminSession, saveNavigationData,
+  setAccessToken, clearAccessToken, verifyAdminToken, restoreAdminSession, saveNavigationData, fetchNavigationData,
 } from '../modules/navigation/github'
 
 const data = ref(structuredClone(defaultNavigationData))
@@ -74,20 +75,35 @@ function setSort(mode) { sortMode.value = mode; localStorage.setItem('mot-naviga
 function markMessage(text) { message.value = text; errorMessage.value = '' }
 function markError(text) { errorMessage.value = text; message.value = '' }
 
+const NAVIGATION_CACHE_KEY = 'mot-navigation-data-cache'
+
+function isValidNavigationData(value) {
+  return value?.schemaVersion === 1 && Array.isArray(value.categories) && Array.isArray(value.websites)
+}
+
 async function loadData() {
   loading.value = true
   loadError.value = ''
   try {
-    const response = await fetch(`https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/public/data/navigation.json?t=${Date.now()}`, { cache: 'no-store' })
-    if (!response.ok) throw new Error(`读取网址数据失败（HTTP ${response.status}）`)
-    const remote = await response.json()
-    if (remote.schemaVersion !== 1 || !Array.isArray(remote.categories) || !Array.isArray(remote.websites)) throw new Error('网址数据格式不正确')
+    const remote = await fetchNavigationData()
+    if (!isValidNavigationData(remote)) throw new Error('网址数据格式不正确')
     data.value = remote
     baseline.value = snapshot()
+    try { sessionStorage.setItem(NAVIGATION_CACHE_KEY, JSON.stringify(remote)) } catch { /* 缓存空间不足时不影响正常读取 */ }
   } catch (error) {
-    loadError.value = error.message
-    data.value = structuredClone(defaultNavigationData)
-    baseline.value = snapshot()
+    // 网络或 GitHub 暂时异常时，保留最后一次成功读取的数据，不用空默认数据覆盖页面。
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(NAVIGATION_CACHE_KEY) || 'null')
+      if (isValidNavigationData(cached)) {
+        data.value = cached
+        baseline.value = snapshot()
+        loadError.value = `暂时无法读取 GitHub 最新数据，当前显示本标签页上次成功读取的数据。原因：${error.message}`
+      } else {
+        loadError.value = `无法读取 GitHub 网址数据：${error.message}`
+      }
+    } catch {
+      loadError.value = `无法读取 GitHub 网址数据：${error.message}`
+    }
   } finally { loading.value = false }
 }
 onMounted(async () => {
@@ -335,8 +351,7 @@ function iconFor(category) {
         <div v-else-if="viewMode==='card'" class="nav-card-grid">
           <article v-for="item in filtered" :key="item.id" class="website-card">
             <div class="website-card-top">
-              <img v-if="item.favicon" :src="item.favicon" @error="$event.target.style.display='none'" alt="" class="website-favicon"/>
-              <span v-else class="website-favicon-fallback"><Globe :size="19"/></span>
+              <WebsiteFavicon :website="item" :size="34"/>
               <button class="website-favorite" :class="{selected:item.favorite}" :aria-label="item.favorite?'取消收藏':'收藏'"  :disabled="!admin" @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></button>
             </div>
             <button class="website-name" @click="openWebsite(item)">{{item.name}} <ExternalLink :size="12"/></button>
@@ -348,7 +363,7 @@ function iconFor(category) {
 
         <div v-else class="website-list">
           <div v-for="item in filtered" :key="item.id" class="website-list-row">
-            <span class="website-list-icon"><img v-if="item.favicon" :src="item.favicon" @error="$event.target.style.display='none'" alt=""/><Globe v-else :size="18"/></span>
+            <span class="website-list-icon"><WebsiteFavicon :website="item" :size="22"/></span>
             <div class="website-list-main"><button class="website-name" @click="openWebsite(item)">{{item.name}} <ExternalLink :size="12"/></button><span>{{domainOf(item.url)}}</span><p>{{item.description || '暂无简介'}}</p></div>
             <span class="website-list-category">{{data.categories.find(c=>c.id===item.categoryId)?.name || '未分类'}}</span>
             <button class="website-favorite" :class="{selected:item.favorite}" :disabled="!admin" @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></button>
@@ -362,7 +377,7 @@ function iconFor(category) {
       <aside class="nav-drawer">
         <div class="nav-drawer-head"><span>网站详情</span><button class="nav-icon-action" @click="selectedWebsite=null"><X/></button></div>
         <div class="nav-drawer-content">
-          <div class="nav-drawer-brand"><span class="website-favicon-fallback"><Globe :size="25"/></span><div><h2>{{selectedWebsite.name}}</h2><a :href="selectedWebsite.url" target="_blank" rel="noreferrer">{{domainOf(selectedWebsite.url)}} <ExternalLink :size="12"/></a></div></div>
+          <div class="nav-drawer-brand"><WebsiteFavicon :website="selectedWebsite" :size="48"/><div><h2>{{selectedWebsite.name}}</h2><a :href="selectedWebsite.url" target="_blank" rel="noreferrer">{{domainOf(selectedWebsite.url)}} <ExternalLink :size="12"/></a></div></div>
           <div class="nav-drawer-actions"><button class="nav-btn nav-btn-primary" @click="openWebsite(selectedWebsite)"><ExternalLink :size="15"/>访问网站</button><button v-if="admin" class="nav-btn nav-btn-light" @click="openEdit(selectedWebsite)"><Pencil :size="15"/>编辑</button><button v-if="admin" class="nav-btn nav-btn-light nav-danger" @click="deleteWebsite(selectedWebsite)"><Trash2 :size="15"/></button></div>
           <div class="nav-detail-section"><label>简介</label><p>{{selectedWebsite.description || '暂无简介'}}</p></div>
           <div class="nav-detail-section"><label>详细备注</label><p class="nav-detail-notes">{{selectedWebsite.notes || '暂无详细备注'}}</p></div>
@@ -379,7 +394,7 @@ function iconFor(category) {
         <form @submit.prevent="saveForm" class="nav-form">
           <label>网站名称 <b>*</b><input v-model="form.name" required maxlength="100" placeholder="例如：OpenAI"/></label>
           <label>网址 <b>*</b><input v-model="form.url" required placeholder="https://example.com"/></label>
-          <label>网站图标地址<input v-model="form.favicon" placeholder="可选，留空使用默认图标"/></label>
+          <label>网站图标地址<input v-model="form.favicon" placeholder="留空自动获取网站图标，可填写自定义图标 URL"/></label>
           <label>简介<textarea v-model="form.description" rows="2" maxlength="300" placeholder="简短介绍这个网站"/></label>
           <label>详细备注<textarea v-model="form.notes" rows="5" placeholder="记录用途、特点、使用说明等详细信息"/></label>
           <div class="nav-form-row"><label>分类<select v-model="form.categoryId"><option v-for="c in data.categories" :key="c.id" :value="c.id">{{c.name}}</option></select></label><label>标签<input v-model="form.tagsText" placeholder="多个标签用逗号分隔"/></label></div>
