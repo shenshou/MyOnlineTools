@@ -11,6 +11,7 @@ const router = useRouter()
 const prefs = usePreferences()
 const query = ref('')
 const searchInput = ref(null)
+const shortcutLabel = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
 const menuOpen = ref(false)
 const navigationWebsites = ref([])
 const searchLoading = ref(false)
@@ -127,7 +128,7 @@ onBeforeUnmount(() => {
           <form class="header-search" @submit.prevent="search">
             <Search :size="17"/>
             <input ref="searchInput" v-model="query" placeholder="全局搜索工具、网站…" autocomplete="off" @keydown.esc="query=''"/>
-            <kbd>⌘ K</kbd>
+            <kbd>{{ shortcutLabel }}</kbd>
           </form>
           <div v-if="normalizedQuery" class="global-search-results">
             <template v-if="toolResults.length">
