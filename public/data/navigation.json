@@ -64,7 +64,21 @@
       "sortOrder": 1,
       "createdAt": 1794412119418,
       "updatedAt": 1794412119418
+    },
+    {
+      "id": "2ea35584-f5fd-42fc-9b41-f164c47a75ad",
+      "name": "B站",
+      "url": "https://www.bilibili.com/",
+      "favicon": "",
+      "description": "",
+      "notes": "",
+      "categoryId": "utility",
+      "tags": [],
+      "favorite": false,
+      "sortOrder": 2,
+      "createdAt": 1794412650572,
+      "updatedAt": 1794412650572
     }
   ],
-  "updatedAt": 1794412120405
+  "updatedAt": 1794412655918
 }
