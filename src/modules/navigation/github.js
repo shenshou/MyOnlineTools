@@ -69,7 +69,7 @@ export async function saveNavigationData(data) {
   if (!accessToken) throw new Error('请先使用 GitHub 管理员账号授权')
   const path = `/repos/${OWNER}/${REPO}/contents/${DATA_PATH}`
   const current = await api(`${path}?ref=${BRANCH}`)
-  const bytes = new TextEncoder().encode(JSON.stringify(data, null, 2) + '\\n')
+  const bytes = new TextEncoder().encode(JSON.stringify(data, null, 2) + '\n')
   let binary = ''
   bytes.forEach(byte => { binary += String.fromCharCode(byte) })
   const encoded = btoa(binary)
