@@ -8,11 +8,13 @@ import {
 } from 'lucide-vue-next'
 import { defaultNavigationData } from '../modules/navigation/defaultData'
 import WebsiteFavicon from '../modules/navigation/components/WebsiteFavicon.vue'
+import { useToast } from '../composables/useToast'
 import {
   setAccessToken, clearAccessToken, verifyAdminToken, restoreAdminSession, saveNavigationData, fetchNavigationData,
 } from '../modules/navigation/github'
 
 const route = useRoute()
+const { showToast } = useToast()
 const data = ref(structuredClone(defaultNavigationData))
 const baseline = ref('')
 const loading = ref(true)
@@ -195,7 +197,7 @@ function moveCategory(category, direction) {
 }
 function toggleFavorite(item) {
   if (!admin.value) {
-    window.alert('只有管理员模式才能修改公共收藏状态。')
+    showToast('只有管理员模式才能修改公共收藏状态。', 'warning')
     return
   }
   item.favorite = !item.favorite
