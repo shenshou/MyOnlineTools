@@ -92,18 +92,18 @@ async function loadData() {
 }
 onMounted(loadData)
 
-function openAdd() {
+function openAdd() {\n  if (!admin.value) { showAdmin.value = true; return }
   editingId.value = null
   form.value = { ...emptyForm(), categoryId: selectedCategory.value !== 'all' ? selectedCategory.value : (data.value.categories[0]?.id || 'other') }
   showForm.value = true
 }
-function openEdit(item) {
+function openEdit(item) {\n  if (!admin.value) { showAdmin.value = true; return }
   editingId.value = item.id
   form.value = { ...item, tagsText: (item.tags || []).join(', ') }
   selectedWebsite.value = null
   showForm.value = true
 }
-function saveForm() {
+function saveForm() {\n  if (!admin.value) { showAdmin.value = true; return }
   try {
     const name = form.value.name.trim()
     if (!name) throw new Error('请填写网站名称')
@@ -126,13 +126,13 @@ function saveForm() {
     markMessage('更改已暂存在当前页面，请点击「保存到 GitHub」同步。')
   } catch (error) { markError(error.message || '请检查输入内容') }
 }
-function deleteWebsite(item) {
+function deleteWebsite(item) {\n  if (!admin.value) { showAdmin.value = true; return }
   if (!window.confirm(`确定删除「${item.name}」吗？此操作将在保存后写入仓库。`)) return
   data.value.websites = data.value.websites.filter(w => w.id !== item.id)
   selectedWebsite.value = null
   markMessage('已删除，尚未同步到 GitHub。')
 }
-function toggleFavorite(item) { item.favorite = !item.favorite; item.updatedAt = Date.now() }
+function toggleFavorite(item) {\n  if (!admin.value) { showAdmin.value = true; return } item.favorite = !item.favorite; item.updatedAt = Date.now() }
 function openWebsite(item) { window.open(item.url, '_blank', 'noopener,noreferrer') }
 
 async function saveToGitHub() {
@@ -171,7 +171,7 @@ function logout() {
   showAdmin.value = false
   markMessage('已退出管理员模式。')
 }
-async function importData() {
+async function importData() {\n  if (!admin.value) { showAdmin.value = true; return }
   try {
     const incoming = JSON.parse(importText.value)
     if (incoming.schemaVersion !== 1 || !Array.isArray(incoming.categories) || !Array.isArray(incoming.websites)) throw new Error('JSON 结构不符合网址导航数据格式')
@@ -206,21 +206,21 @@ function exportData() {
   a.href = url; a.download = 'navigation.json'; a.click()
   URL.revokeObjectURL(url)
 }
-function addCategory() {
+function addCategory() {\n  if (!admin.value) { showAdmin.value = true; return }
   const name = newCategory.value.trim()
   if (!name) return
   if (data.value.categories.some(c => c.name === name)) { markError('分类名称已存在'); return }
   data.value.categories.push({ id: `custom-${crypto.randomUUID()}`, name, icon: 'folder', sortOrder: data.value.categories.length + 1 })
   newCategory.value = ''
 }
-function renameCategory(category) {
+function renameCategory(category) {\n  if (!admin.value) { showAdmin.value = true; return }
   const name = categoryEdit.value?.name?.trim()
   if (!name) return
   if (data.value.categories.some(c => c.id !== category.id && c.name === name)) { markError('分类名称已存在'); return }
   category.name = name
   categoryEdit.value = null
 }
-function removeCategory(category) {
+function removeCategory(category) {\n  if (!admin.value) { showAdmin.value = true; return }
   if (data.value.categories.length <= 1) { markError('至少保留一个分类'); return }
   const target = data.value.categories.find(c => c.id !== category.id)
   if (!window.confirm(`删除「${category.name}」并将其中网址移动到「${target.name}」？`)) return
@@ -248,7 +248,7 @@ function iconFor(category) {
       <div><div class="nav-eyebrow">PERSONAL BOOKMARK LIBRARY</div><h1>网址导航</h1><p>集中收藏、整理和管理常用网站。</p></div>
       <div class="nav-heading-actions">
         <button class="nav-btn nav-btn-light" @click="showAdmin=true"><LogIn :size="15"/>{{admin ? '管理员已授权' : '管理员登录'}}</button>
-        <button class="nav-btn nav-btn-primary" @click="openAdd"><Plus :size="16"/>添加网址</button>
+        <button class="nav-btn nav-btn-primary" @click="admin ? openAdd() : showAdmin=true"><Plus :size="16"/>添加网址</button>
       </div>
     </section>
 
@@ -270,7 +270,7 @@ function iconFor(category) {
         <button :class="{active:favoritesOnly}" @click="favoritesOnly=!favoritesOnly;selectedCategory='all'"><Star :size="16"/>我的收藏<span>{{data.websites.filter(w=>w.favorite).length}}</span></button>
         <div class="nav-side-divider"></div>
         <button v-for="c in data.categories.slice().sort((a,b)=>a.sortOrder-b.sortOrder)" :key="c.id" :class="{active:selectedCategory===c.id && !favoritesOnly}" @click="selectedCategory=c.id;favoritesOnly=false;selectedTag=''"><span class="nav-category-emoji">{{iconFor(c)}}</span>{{c.name}}<span>{{categoryCounts[c.id] || 0}}</span></button>
-        <button class="nav-manage-cats" @click="showCategoryManager=true"><Settings :size="14"/>管理分类</button>
+        <button class="nav-manage-cats" v-if="admin" @click="showCategoryManager=true"><Settings :size="14"/>管理分类</button>
         <div v-if="allTags.length" class="nav-tags-block"><div class="nav-side-title">标签</div><button v-for="tag in allTags" :key="tag" :class="{active:selectedTag===tag}" @click="selectedTag=selectedTag===tag?'':tag"># {{tag}}</button></div>
       </aside>
 
@@ -280,7 +280,7 @@ function iconFor(category) {
           <div class="nav-toolbar-actions">
             <select :value="sortMode" @change="setSort($event.target.value)" aria-label="排序方式"><option value="custom">自定义排序</option><option value="newest">最近添加</option><option value="updated">最近更新</option><option value="name-asc">名称升序</option><option value="name-desc">名称降序</option></select>
             <div class="nav-view-toggle"><button :class="{active:viewMode==='card'}" aria-label="卡片视图" @click="setView('card')"><LayoutGrid :size="16"/></button><button :class="{active:viewMode==='list'}" aria-label="列表视图" @click="setView('list')"><List :size="17"/></button></div>
-            <button class="nav-icon-action" title="导入 JSON" @click="showImport=true"><Upload :size="16"/></button>
+            <button class="nav-icon-action" title="导入 JSON" @click="admin ? showImport=true : showAdmin=true"><Upload :size="16"/></button>
             <button class="nav-icon-action" title="导出 JSON" @click="exportData"><Download :size="16"/></button>
           </div>
         </div>
@@ -293,7 +293,7 @@ function iconFor(category) {
             <div class="website-card-top">
               <img v-if="item.favicon" :src="item.favicon" @error="$event.target.style.display='none'" alt="" class="website-favicon"/>
               <span v-else class="website-favicon-fallback"><Globe :size="19"/></span>
-              <button class="website-favorite" :class="{selected:item.favorite}" :aria-label="item.favorite?'取消收藏':'收藏'" @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></button>
+              <button class="website-favorite" :class="{selected:item.favorite}" :aria-label="item.favorite?'取消收藏':'收藏'"  :disabled="!admin" @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></button>
             </div>
             <button class="website-name" @click="openWebsite(item)">{{item.name}} <ExternalLink :size="12"/></button>
             <div class="website-domain">{{domainOf(item.url)}}</div>
@@ -319,7 +319,7 @@ function iconFor(category) {
         <div class="nav-drawer-head"><span>网站详情</span><button class="nav-icon-action" @click="selectedWebsite=null"><X/></button></div>
         <div class="nav-drawer-content">
           <div class="nav-drawer-brand"><span class="website-favicon-fallback"><Globe :size="25"/></span><div><h2>{{selectedWebsite.name}}</h2><a :href="selectedWebsite.url" target="_blank" rel="noreferrer">{{domainOf(selectedWebsite.url)}} <ExternalLink :size="12"/></a></div></div>
-          <div class="nav-drawer-actions"><button class="nav-btn nav-btn-primary" @click="openWebsite(selectedWebsite)"><ExternalLink :size="15"/>访问网站</button><button class="nav-btn nav-btn-light" @click="openEdit(selectedWebsite)"><Pencil :size="15"/>编辑</button><button class="nav-btn nav-btn-light nav-danger" @click="deleteWebsite(selectedWebsite)"><Trash2 :size="15"/></button></div>
+          <div class="nav-drawer-actions"><button class="nav-btn nav-btn-primary" @click="openWebsite(selectedWebsite)"><ExternalLink :size="15"/>访问网站</button><button v-if="admin" class="nav-btn nav-btn-light" @click="openEdit(selectedWebsite)"><Pencil :size="15"/>编辑</button><button v-if="admin" class="nav-btn nav-btn-light nav-danger" @click="deleteWebsite(selectedWebsite)"><Trash2 :size="15"/></button></div>
           <div class="nav-detail-section"><label>简介</label><p>{{selectedWebsite.description || '暂无简介'}}</p></div>
           <div class="nav-detail-section"><label>详细备注</label><p class="nav-detail-notes">{{selectedWebsite.notes || '暂无详细备注'}}</p></div>
           <div class="nav-detail-section"><label>网址</label><a :href="selectedWebsite.url" target="_blank" rel="noreferrer">{{selectedWebsite.url}}</a></div>
@@ -377,7 +377,7 @@ function iconFor(category) {
       </section>
     </div>
 
-    <div v-if="dirty" class="nav-save-bar"><span><AlertCircle :size="16"/>有未保存的更改</span><button class="nav-btn nav-btn-primary" :disabled="busy" @click="saveToGitHub"><Save :size="15"/>{{busy ? '正在保存…' : '保存到 GitHub'}}</button></div>
+    <div v-if="dirty && admin" class="nav-save-bar"><span><AlertCircle :size="16"/>有未保存的更改</span><button class="nav-btn nav-btn-primary" :disabled="busy" @click="saveToGitHub"><Save :size="15"/>{{busy ? '正在保存…' : '保存到 GitHub'}}</button></div>
   </div>
 </template>
 <style scoped>
