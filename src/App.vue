@@ -4,7 +4,7 @@ import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { Search, Command, Sun, Moon, Github, Menu, X, House, Compass, Wrench, Globe, ArrowUpRight } from 'lucide-vue-next'
 import { usePreferences } from './stores/preferences'
 import { tools } from './data/tools'
-import ToastContainer from './components/ToastContainer.vue'
+import { ToastContainer } from './components/ui'
 
 const route = useRoute()
 const router = useRouter()

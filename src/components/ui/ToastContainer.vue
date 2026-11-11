@@ -1,6 +1,6 @@
 <script setup>
 import { CheckCircle2, AlertTriangle, XCircle, Info, X } from 'lucide-vue-next'
-import { useToast } from '../composables/useToast'
+import { useToast } from '../../composables/useToast'
 
 const { toasts, dismissToast } = useToast()
 const icons = {
