@@ -41,6 +41,12 @@ MyOnlineTools 收集并整合常用的小型在线工具，重点关注使用效
 | 编码转换 | 颜色转换 | 将 HEX 颜色值转换为 RGB、HSL 格式 |
 | 编码转换 | 磁力链接补全 | 批量为 BTIH 哈希补全 `magnet:?xt=urn:btih:` 前缀，已有标准前缀的链接保持不变 |
 
+## 网址导航
+
+通过顶部导航进入「网址导航」，可以添加和整理网站。页面支持卡片/列表切换、分类与标签筛选、全文搜索、收藏、详情抽屉、JSON 合并/覆盖导入和导出。
+
+网址数据存放于 `public/data/navigation.json`，公开读取；只有拥有仓库写入权限并提供有效 Fine-grained Personal Access Token 的管理员才能保存修改。建议创建仅授权 `shenshou/MyOnlineTools` 仓库、且 `Contents` 权限为 `Read and write` 的令牌。令牌只保存在当前页面内存中，刷新页面后需要重新输入。每次点击「保存到 GitHub」统一提交当前所有修改；单纯更新网址 JSON 不会触发 Pages 重新构建。
+
 ## 使用说明
 
 1. 打开[在线工具箱](https://shenshou.github.io/MyOnlineTools/)。
