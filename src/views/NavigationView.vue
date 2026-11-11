@@ -10,6 +10,7 @@ import { defaultNavigationData } from '../modules/navigation/defaultData'
 import WebsiteFavicon from '../modules/navigation/components/WebsiteFavicon.vue'
 import { useToast } from '../composables/useToast'
 import { useConfirm } from '../composables/useConfirm'
+import { Button, Select, EmptyState, Loading, Modal } from '../components/ui'
 import {
   setAccessToken, clearAccessToken, verifyAdminToken, restoreAdminSession, saveNavigationData, fetchNavigationData,
 } from '../modules/navigation/github'
@@ -17,6 +18,7 @@ import {
 const route = useRoute()
 const { showToast } = useToast()
 const { confirm } = useConfirm()
+const sortOptions = [{value:'custom',label:'自定义排序'},{value:'newest',label:'最近添加'},{value:'updated',label:'最近更新'},{value:'name-asc',label:'名称升序'},{value:'name-desc',label:'名称降序'}]
 const data = ref(structuredClone(defaultNavigationData))
 const baseline = ref('')
 const loading = ref(true)
@@ -358,15 +360,15 @@ function iconFor(category) {
         <div class="nav-toolbar">
           <label class="nav-search"><Search :size="17"/><input v-model="search" placeholder="搜索名称、网址、简介、备注或标签…"/><kbd>⌘ K</kbd></label>
           <div class="nav-toolbar-actions">
-            <select :value="sortMode" @change="setSort($event.target.value)" aria-label="排序方式"><option value="custom">自定义排序</option><option value="newest">最近添加</option><option value="updated">最近更新</option><option value="name-asc">名称升序</option><option value="name-desc">名称降序</option></select>
+            <Select :model-value="sortMode" :options="sortOptions" aria-label="排序方式" @update:model-value="setSort"/>
             <div class="nav-view-toggle"><button :class="{active:viewMode==='card'}" aria-label="卡片视图" @click="setView('card')"><LayoutGrid :size="16"/></button><button :class="{active:viewMode==='list'}" aria-label="列表视图" @click="setView('list')"><List :size="17"/></button></div>
             <button class="nav-icon-action" title="导入 JSON" @click="admin ? showImport=true : showAdmin=true"><Upload :size="16"/></button>
             <button class="nav-icon-action" title="导出 JSON" @click="exportData"><Download :size="16"/></button>
           </div>
         </div>
 
-        <div v-if="loading" class="nav-empty"><RefreshCw class="spin" :size="25"/><p>正在加载网址…</p></div>
-        <div v-else-if="!filtered.length" class="nav-empty"><Globe :size="28"/><strong>{{search || selectedTag || favoritesOnly ? '没有找到匹配的网址' : '这里还没有网址'}}</strong><p>添加常用网站，建立自己的网址收藏库。</p><button class="nav-btn nav-btn-primary" @click="openAdd"><Plus :size="15"/>添加第一个网址</button></div>
+        <div v-if="loading" class="nav-empty"><Loading label="正在加载网址…" block/></div>
+        <EmptyState v-else-if="!filtered.length" :title="search || selectedTag || favoritesOnly ? '没有找到匹配的网址' : '这里还没有网址'" description="添加常用网站，建立自己的网址收藏库。" action-label="添加第一个网址" @action="openAdd"><template #icon><Globe :size="28"/></template></EmptyState>
 
         <div v-else-if="viewMode==='card'" class="nav-card-grid">
           <article v-for="item in filtered" :key="item.id" class="website-card">
@@ -408,8 +410,7 @@ function iconFor(category) {
       </aside>
     </div>
 
-    <div v-if="showForm" class="nav-modal-backdrop" @click.self="showForm=false">
-      <section class="nav-modal nav-form-modal">
+    <Modal v-model="showForm" :title="editingId ? '编辑网址' : '添加网址'" size="lg">
         <div class="nav-modal-head"><h2>{{editingId ? '编辑网址' : '添加网址'}}</h2><button @click="showForm=false"><X/></button></div>
         <form @submit.prevent="saveForm" class="nav-form">
           <label>网站名称 <b>*</b><input v-model="form.name" required maxlength="100" placeholder="例如：OpenAI"/></label>
@@ -421,11 +422,9 @@ function iconFor(category) {
           <label class="nav-check-label"><input v-model="form.favorite" type="checkbox"/>加入收藏</label>
           <div class="nav-modal-actions"><button type="button" class="nav-btn nav-btn-light" @click="showForm=false">取消</button><button type="submit" class="nav-btn nav-btn-primary"><Check :size="15"/>保存更改</button></div>
         </form>
-      </section>
-    </div>
+      </Modal>
 
-    <div v-if="showAdmin" class="nav-modal-backdrop" @click.self="showAdmin=false">
-      <section class="nav-modal">
+        <Modal v-model="showAdmin" title="GitHub 管理员授权" size="md">
         <div class="nav-modal-head"><h2>GitHub 管理员授权</h2><button @click="showAdmin=false"><X/></button></div>
         <div class="nav-modal-body">
           <div v-if="admin" class="nav-authorized"><Check :size="20"/>当前已获得仓库写入权限。访问令牌仅保存在当前页面内存中。</div>
@@ -437,26 +436,21 @@ function iconFor(category) {
           </template>
         </div>
         <div class="nav-modal-actions"><button v-if="admin" class="nav-btn nav-btn-light nav-danger" @click="logout"><LogOut :size="15"/>退出管理员</button><button class="nav-btn nav-btn-light" @click="showAdmin=false">关闭</button></div>
-      </section>
-    </div>
+      </Modal>
 
-    <div v-if="showImport" class="nav-modal-backdrop" @click.self="showImport=false">
-      <section class="nav-modal">
+        <Modal v-model="showImport" title="导入网址数据" size="md">
         <div class="nav-modal-head"><h2>导入网址数据</h2><button @click="showImport=false"><X/></button></div>
         <div class="nav-modal-body"><p>选择此前导出的 navigation.json 文件，或直接粘贴 JSON 内容。</p><label class="nav-file-pick"><FileJson :size="17"/>选择 JSON 文件<input type="file" accept=".json,application/json" @change="openImportFile"/></label><textarea v-model="importText" rows="9" placeholder="粘贴 JSON 数据…"></textarea><div class="nav-radio-row"><label><input v-model="importMode" type="radio" value="merge"/>合并导入（按网址去重）</label><label><input v-model="importMode" type="radio" value="replace"/>覆盖导入</label></div></div>
         <div class="nav-modal-actions"><button class="nav-btn nav-btn-light" @click="showImport=false">取消</button><button class="nav-btn nav-btn-primary" @click="importData"><Upload :size="15"/>开始导入</button></div>
-      </section>
-    </div>
+      </Modal>
 
-    <div v-if="showCategoryManager" class="nav-modal-backdrop" @click.self="showCategoryManager=false">
-      <section class="nav-modal">
+        <Modal v-model="showCategoryManager" title="管理分类" size="lg">
         <div class="nav-modal-head"><h2>管理分类</h2><button @click="showCategoryManager=false"><X/></button></div>
         <div class="nav-modal-body"><div class="nav-add-category"><input v-model="newCategory" placeholder="输入新分类名称" @keydown.enter.prevent="addCategory"/><button class="nav-btn nav-btn-primary" @click="addCategory"><Plus :size="14"/>添加</button></div><div v-for="c in data.categories" :key="c.id" class="nav-category-edit"><span>{{iconFor(c)}}</span><input v-if="categoryEdit!==null && categoryEdit.id===c.id" v-model="categoryEdit.name" @keydown.enter="renameCategory(c)"/><strong v-else>{{c.name}}</strong><select v-model="c.icon" aria-label="分类图标"><option value="bot">🤖 AI</option><option value="code">💻 开发</option><option value="palette">🎨 设计</option><option value="clapperboard">🎬 娱乐</option><option value="download">⬇️ 下载</option><option value="graduation-cap">🎓 学习</option><option value="globe">🌐 实用</option><option value="folder">📁 文件夹</option></select><span class="nav-category-count">{{categoryCounts[c.id] || 0}} 个网址</span><button class="nav-icon-action" @click="moveCategory(c,-1)" title="上移分类"><ArrowUp :size="14"/></button><button class="nav-icon-action" @click="moveCategory(c,1)" title="下移分类"><ArrowDown :size="14"/></button><button class="nav-icon-action" @click="categoryEdit={id:c.id,name:c.name}"><Pencil :size="14"/></button><button class="nav-icon-action nav-danger" @click="removeCategory(c)"><Trash2 :size="14"/></button><button v-if="categoryEdit!==null && categoryEdit.id===c.id" class="nav-icon-action" @click="renameCategory(c)"><Check :size="14"/></button></div></div>
         <div class="nav-modal-actions"><button class="nav-btn nav-btn-light" @click="showCategoryManager=false">完成</button></div>
-      </section>
-    </div>
+      </Modal>
 
-    <div v-if="dirty && admin" class="nav-save-bar"><span><AlertCircle :size="16"/>有未保存的更改</span><button class="nav-btn nav-btn-primary" :disabled="busy" @click="saveToGitHub"><Save :size="15"/>{{busy ? '正在保存…' : '保存到 GitHub'}}</button></div>
+        <div v-if="dirty && admin" class="nav-save-bar"><span><AlertCircle :size="16"/>有未保存的更改</span><button class="nav-btn nav-btn-primary" :disabled="busy" @click="saveToGitHub"><Save :size="15"/>{{busy ? '正在保存…' : '保存到 GitHub'}}</button></div>
   </div>
 </template>
 <style scoped>
