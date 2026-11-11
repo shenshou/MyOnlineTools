@@ -43,9 +43,9 @@ MyOnlineTools 收集并整合常用的小型在线工具，重点关注使用效
 
 ## 网址导航
 
-通过顶部导航进入「网址导航」，可以添加和整理网站。页面支持卡片/列表切换、分类与标签筛选、全文搜索、收藏、详情抽屉、JSON 合并/覆盖导入和导出。
+通过左侧「资源管理」中的「网址导航」进入，可以添加和整理网站。页面支持卡片/列表切换、分类与标签筛选、全文搜索、收藏、详情抽屉、JSON 合并/覆盖导入和导出。
 
-网址数据存放于 `public/data/navigation.json`，公开读取；只有拥有仓库写入权限并提供有效 Fine-grained Personal Access Token 的管理员才能保存修改。建议创建仅授权 `shenshou/MyOnlineTools` 仓库、且 `Contents` 权限为 `Read and write` 的令牌。令牌只保存在当前页面内存中，刷新页面后需要重新输入。每次点击「保存到 GitHub」统一提交当前所有修改；单纯更新网址 JSON 不会触发 Pages 重新构建。
+网址数据存放于 `public/data/navigation.json`，公开读取；只有拥有仓库写入权限并提供有效 Fine-grained Personal Access Token 的管理员才能保存修改。建议创建仅授权 `shenshou/MyOnlineTools` 仓库、且 `Contents` 权限为 `Read and write` 的令牌。令牌保存在当前标签页的 `sessionStorage` 中，刷新页面后仍保持授权，关闭标签页后会话结束。每次点击「保存到 GitHub」统一提交当前所有修改；单纯更新网址 JSON 不会触发 Pages 重新构建。
 
 ## 使用说明
 

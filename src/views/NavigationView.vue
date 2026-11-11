@@ -7,7 +7,7 @@ import {
 } from 'lucide-vue-next'
 import { defaultNavigationData } from '../modules/navigation/defaultData'
 import {
-  setAccessToken, clearAccessToken, verifyAdminToken, saveNavigationData,
+  setAccessToken, clearAccessToken, verifyAdminToken, restoreAdminSession, saveNavigationData,
 } from '../modules/navigation/github'
 
 const data = ref(structuredClone(defaultNavigationData))
@@ -90,7 +90,17 @@ async function loadData() {
     baseline.value = snapshot()
   } finally { loading.value = false }
 }
-onMounted(loadData)
+onMounted(async () => {
+  await loadData()
+  try {
+    const account = await restoreAdminSession()
+    admin.value = Boolean(account)
+    if (account) markMessage(`已恢复管理员授权：${account}`)
+  } catch {
+    admin.value = false
+    markError('保存的 GitHub 授权已失效，请重新登录。')
+  }
+})
 
 function openAdd() {
   if (!admin.value) { showAdmin.value = true; return }

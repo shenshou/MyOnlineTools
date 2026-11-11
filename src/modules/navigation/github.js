@@ -4,10 +4,34 @@ const BRANCH = 'main'
 const DATA_PATH = 'public/data/navigation.json'
 const API = 'https://api.github.com'
 
-let accessToken = ''
+const TOKEN_KEY = 'mot-navigation-github-token'
+let accessToken = typeof window !== 'undefined' ? window.sessionStorage.getItem(TOKEN_KEY) || '' : ''
 
-export function setAccessToken(token) { accessToken = token || '' }
-export function clearAccessToken() { accessToken = '' }
+export function setAccessToken(token) {
+  accessToken = token || ''
+  if (typeof window !== 'undefined') {
+    if (accessToken) window.sessionStorage.setItem(TOKEN_KEY, accessToken)
+    else window.sessionStorage.removeItem(TOKEN_KEY)
+  }
+}
+
+export function clearAccessToken() {
+  accessToken = ''
+  if (typeof window !== 'undefined') window.sessionStorage.removeItem(TOKEN_KEY)
+}
+
+export async function restoreAdminSession() {
+  const token = typeof window !== 'undefined' ? window.sessionStorage.getItem(TOKEN_KEY) : ''
+  if (!token) return null
+  try {
+    const account = await verifyAdminToken(token)
+    accessToken = token
+    return account
+  } catch (error) {
+    clearAccessToken()
+    throw error
+  }
+}
 
 async function api(path, options = {}) {
   const response = await fetch(API + path, {
