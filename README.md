@@ -17,7 +17,9 @@ MyOnlineTools 收集并整合常用的小型在线工具，重点关注使用效
 - **即开即用：** 通过浏览器访问，无需注册或登录。
 - **本地处理：** 工具逻辑在浏览器端执行，输入内容不会上传到项目服务器。
 - **批量处理：** 支持多行文本和磁力链接批量处理。
-- **个人工具箱：** 支持收藏工具、查看最近使用记录。\n- **网址导航：** 提供独立网址导航页，支持分类、标签、收藏、搜索、卡片/列表切换、详情备注与 JSON 导入导出。\n- **GitHub 数据管理：** 网址数据存放在仓库 JSON 文件中，管理员可批量编辑后统一保存，普通访客只读。
+- **个人工具箱：** 支持收藏工具、查看最近使用记录。
+- **网址导航：** 提供独立网址导航页，支持分类、标签、收藏、搜索、卡片/列表切换、详情备注与 JSON 导入导出。
+- **GitHub 数据管理：** 网址数据存放在仓库 JSON 文件中，管理员可批量编辑后统一保存，普通访客只读。
 - **轻量简洁：** Vue 3 单页应用，按工具分类与搜索，快速定位所需功能。
 
 ## 在线访问
@@ -114,12 +116,16 @@ MyOnlineTools/
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml       # GitHub Pages 自动部署工作流
-├── public/\n│   └── data/\n│       └── navigation.json  # 公开网址导航数据\n├── public/                  # 静态资源
+├── public/                  # 静态资源与公开网址导航数据
+│   └── data/
+│       └── navigation.json
 ├── src/
 │   ├── assets/              # 项目资源
 │   ├── components/          # 通用 Vue 组件
 │   ├── data/
 │   │   └── tools.js         # 工具清单、分类与元数据
+│   ├── modules/
+│   │   └── navigation/      # 网址导航数据与 GitHub API 服务
 │   ├── router/
 │   │   └── index.js         # Hash 路由配置
 │   ├── stores/
@@ -128,6 +134,7 @@ MyOnlineTools/
 │   │   └── toolActions.js   # 各工具的核心处理逻辑
 │   ├── views/
 │   │   ├── HomeView.vue     # 工具箱首页
+│   │   ├── NavigationView.vue # 网址导航页面
 │   │   └── ToolView.vue     # 工具操作页面
 │   ├── App.vue
 │   ├── main.js
@@ -142,7 +149,8 @@ MyOnlineTools/
 项目通过 **GitHub Actions + GitHub Pages** 自动构建和部署。
 
 - 部署工作流：`.github/workflows/deploy.yml`
-- 触发条件：向 `main` 分支推送代码，或在 GitHub Actions 页面手动运行工作流。\n- 例外：仅修改 `public/data/navigation.json` 时不会触发 Pages 构建；导航页面直接从 GitHub 仓库读取最新 JSON。
+- 触发条件：向 `main` 分支推送代码，或在 GitHub Actions 页面手动运行工作流。
+- 例外：仅修改 `public/data/navigation.json` 时不会触发 Pages 构建；导航页面直接从 GitHub 仓库读取最新 JSON。
 - 构建命令：`npm install`、`npm run build`
 - 发布目录：`dist/`
 - Vite 公共基础路径：`/MyOnlineTools/`
