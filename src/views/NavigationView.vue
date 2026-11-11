@@ -137,7 +137,10 @@ function deleteWebsite(item) {
   markMessage('已删除，尚未同步到 GitHub。')
 }
 function toggleFavorite(item) {
-  if (!admin.value) { showAdmin.value = true; return } item.favorite = !item.favorite; item.updatedAt = Date.now() }
+  if (!admin.value) { showAdmin.value = true; return }
+  item.favorite = !item.favorite
+  item.updatedAt = Date.now()
+}
 function openWebsite(item) { window.open(item.url, '_blank', 'noopener,noreferrer') }
 
 async function saveToGitHub() {
@@ -316,7 +319,7 @@ function iconFor(category) {
             <span class="website-list-icon"><img v-if="item.favicon" :src="item.favicon" @error="$event.target.style.display='none'" alt=""/><Globe v-else :size="18"/></span>
             <div class="website-list-main"><button class="website-name" @click="openWebsite(item)">{{item.name}} <ExternalLink :size="12"/></button><span>{{domainOf(item.url)}}</span><p>{{item.description || '暂无简介'}}</p></div>
             <span class="website-list-category">{{data.categories.find(c=>c.id===item.categoryId)?.name || '未分类'}}</span>
-            <button class="website-favorite" :class="{selected:item.favorite}" @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></button>
+            <button class="website-favorite" :class="{selected:item.favorite}" :disabled="!admin" @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></button>
             <button class="website-detail-link" @click="selectedWebsite=item">详情</button>
           </div>
         </div>
