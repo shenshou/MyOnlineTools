@@ -10,7 +10,7 @@ import { defaultNavigationData } from '../modules/navigation/defaultData'
 import WebsiteFavicon from '../modules/navigation/components/WebsiteFavicon.vue'
 import { useToast } from '../composables/useToast'
 import { useConfirm } from '../composables/useConfirm'
-import { Button, Select, EmptyState, Loading, Modal } from '../components/ui'
+import { Button, Input, Textarea, Select, EmptyState, Loading, Modal } from '../components/ui'
 import {
   setAccessToken, clearAccessToken, verifyAdminToken, restoreAdminSession, saveNavigationData, fetchNavigationData,
 } from '../modules/navigation/github'
@@ -19,6 +19,7 @@ const route = useRoute()
 const { showToast } = useToast()
 const { confirm } = useConfirm()
 const sortOptions = [{value:'custom',label:'自定义排序'},{value:'newest',label:'最近添加'},{value:'updated',label:'最近更新'},{value:'name-asc',label:'名称升序'},{value:'name-desc',label:'名称降序'}]
+const categoryIconOptions = [{value:'bot',label:'🤖 AI'},{value:'code',label:'💻 开发'},{value:'palette',label:'🎨 设计'},{value:'clapperboard',label:'🎬 娱乐'},{value:'download',label:'⬇️ 下载'},{value:'graduation-cap',label:'🎓 学习'},{value:'globe',label:'🌐 实用'},{value:'folder',label:'📁 文件夹'}]
 const data = ref(structuredClone(defaultNavigationData))
 const baseline = ref('')
 const loading = ref(true)
@@ -329,8 +330,8 @@ function iconFor(category) {
     <section class="nav-heading">
       <div><div class="nav-eyebrow">PERSONAL BOOKMARK LIBRARY</div><h1>网址导航</h1><p>集中收藏、整理和管理常用网站。</p></div>
       <div class="nav-heading-actions">
-        <button class="nav-btn nav-btn-light" @click="showAdmin=true"><LogIn :size="15"/>{{admin ? '管理员已授权' : '管理员登录'}}</button>
-        <button class="nav-btn nav-btn-primary" @click="admin ? openAdd() : showAdmin=true"><Plus :size="16"/>添加网址</button>
+        <Button class="nav-btn nav-btn-light" @click="showAdmin=true" type="button" variant="secondary"><LogIn :size="15"/>{{admin ? '管理员已授权' : '管理员登录'}}</Button>
+        <Button class="nav-btn nav-btn-primary" @click="admin ? openAdd() : showAdmin=true" type="button" variant="primary"><Plus :size="16"/>添加网址</Button>
       </div>
     </section>
 
@@ -362,8 +363,8 @@ function iconFor(category) {
           <div class="nav-toolbar-actions">
             <Select :model-value="sortMode" :options="sortOptions" aria-label="排序方式" @update:model-value="setSort"/>
             <div class="nav-view-toggle"><button :class="{active:viewMode==='card'}" aria-label="卡片视图" @click="setView('card')"><LayoutGrid :size="16"/></button><button :class="{active:viewMode==='list'}" aria-label="列表视图" @click="setView('list')"><List :size="17"/></button></div>
-            <button class="nav-icon-action" title="导入 JSON" @click="admin ? showImport=true : showAdmin=true"><Upload :size="16"/></button>
-            <button class="nav-icon-action" title="导出 JSON" @click="exportData"><Download :size="16"/></button>
+            <Button class="nav-icon-action" title="导入 JSON" @click="admin ? showImport=true : showAdmin=true" type="button" variant="ghost" size="sm"><Upload :size="16"/></Button>
+            <Button class="nav-icon-action" title="导出 JSON" @click="exportData" type="button" variant="ghost" size="sm"><Download :size="16"/></Button>
           </div>
         </div>
 
@@ -374,7 +375,7 @@ function iconFor(category) {
           <article v-for="item in filtered" :key="item.id" class="website-card">
             <div class="website-card-top">
               <WebsiteFavicon :website="item" :size="34"/>
-              <button class="website-favorite" :class="{selected:item.favorite}" :aria-label="item.favorite?'取消收藏':'收藏'"  @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></button>
+              <Button class="website-favorite" variant="ghost" size="sm" :class="{selected:item.favorite}" :aria-label="item.favorite?'取消收藏':'收藏'" :aria-pressed="item.favorite" @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></Button>
             </div>
             <button class="website-name" @click="openWebsite(item)">{{item.name}} <ExternalLink :size="12"/></button>
             <div class="website-domain">{{domainOf(item.url)}}</div>
@@ -388,7 +389,7 @@ function iconFor(category) {
             <span class="website-list-icon"><WebsiteFavicon :website="item" :size="22"/></span>
             <div class="website-list-main"><button class="website-name" @click="openWebsite(item)">{{item.name}} <ExternalLink :size="12"/></button><span>{{domainOf(item.url)}}</span><p>{{item.description || '暂无简介'}}</p></div>
             <span class="website-list-category">{{data.categories.find(c=>c.id===item.categoryId)?.name || '未分类'}}</span>
-            <button class="website-favorite" :class="{selected:item.favorite}" @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></button>
+            <Button class="website-favorite" variant="ghost" size="sm" :class="{selected:item.favorite}" :aria-label="item.favorite?'取消收藏':'收藏'" :aria-pressed="item.favorite" @click="toggleFavorite(item)"><Star :size="17" :fill="item.favorite?'currentColor':'none'"/></Button>
             <button class="website-detail-link" @click="selectedWebsite=item">详情</button>
           </div>
         </div>
@@ -397,10 +398,10 @@ function iconFor(category) {
 
     <div v-if="selectedWebsite" class="nav-drawer-backdrop" @click.self="selectedWebsite=null">
       <aside class="nav-drawer">
-        <div class="nav-drawer-head"><span>网站详情</span><button class="nav-icon-action" @click="selectedWebsite=null"><X/></button></div>
+        <div class="nav-drawer-head"><span>网站详情</span><Button class="nav-icon-action" @click="selectedWebsite=null" type="button" variant="ghost" size="sm"><X/></Button></div>
         <div class="nav-drawer-content">
           <div class="nav-drawer-brand"><WebsiteFavicon :website="selectedWebsite" :size="48"/><div><h2>{{selectedWebsite.name}}</h2><a :href="selectedWebsite.url" target="_blank" rel="noreferrer">{{domainOf(selectedWebsite.url)}} <ExternalLink :size="12"/></a></div></div>
-          <div class="nav-drawer-actions"><button class="nav-btn nav-btn-primary" @click="openWebsite(selectedWebsite)"><ExternalLink :size="15"/>访问网站</button><button v-if="admin" class="nav-btn nav-btn-light" @click="openEdit(selectedWebsite)"><Pencil :size="15"/>编辑</button><button v-if="admin" class="nav-btn nav-btn-light nav-danger" @click="deleteWebsite(selectedWebsite)"><Trash2 :size="15"/></button></div>
+          <div class="nav-drawer-actions"><Button class="nav-btn nav-btn-primary" @click="openWebsite(selectedWebsite)" type="button" variant="primary"><ExternalLink :size="15"/>访问网站</Button><Button v-if="admin" class="nav-btn nav-btn-light" @click="openEdit(selectedWebsite)" type="button" variant="secondary"><Pencil :size="15"/>编辑</Button><Button v-if="admin" class="nav-btn nav-btn-light nav-danger" @click="deleteWebsite(selectedWebsite)" type="button" variant="secondary"><Trash2 :size="15"/></Button></div>
           <div class="nav-detail-section"><label>简介</label><p>{{selectedWebsite.description || '暂无简介'}}</p></div>
           <div class="nav-detail-section"><label>详细备注</label><p class="nav-detail-notes">{{selectedWebsite.notes || '暂无详细备注'}}</p></div>
           <div class="nav-detail-section"><label>网址</label><a :href="selectedWebsite.url" target="_blank" rel="noreferrer">{{selectedWebsite.url}}</a></div>
@@ -413,14 +414,14 @@ function iconFor(category) {
     <Modal v-model="showForm" :title="editingId ? '编辑网址' : '添加网址'" size="lg">
         
         <form @submit.prevent="saveForm" class="nav-form">
-          <label>网站名称 <b>*</b><input v-model="form.name" required maxlength="100" placeholder="例如：OpenAI"/></label>
-          <label>网址 <b>*</b><input v-model="form.url" required placeholder="https://example.com"/></label>
-          <label>网站图标地址<input v-model="form.favicon" placeholder="留空自动获取网站图标，可填写自定义图标 URL"/></label>
-          <label>简介<textarea v-model="form.description" rows="2" maxlength="300" placeholder="简短介绍这个网站"/></label>
-          <label>详细备注<textarea v-model="form.notes" rows="5" placeholder="记录用途、特点、使用说明等详细信息"/></label>
-          <div class="nav-form-row"><label>分类<select v-model="form.categoryId"><option v-for="c in data.categories" :key="c.id" :value="c.id">{{c.name}}</option></select></label><label>标签<input v-model="form.tagsText" placeholder="多个标签用逗号分隔"/></label></div>
+          <Input v-model="form.name" label="网站名称 *" required maxlength="100" placeholder="例如：OpenAI" />
+          <Input v-model="form.url" label="网址 *" required placeholder="https://example.com" />
+          <Input v-model="form.favicon" label="网站图标地址" placeholder="留空自动获取网站图标，可填写自定义图标 URL" />
+          <Textarea v-model="form.description" label="简介" rows="2" maxlength="300" placeholder="简短介绍这个网站" />
+          <Textarea v-model="form.notes" label="详细备注" rows="5" placeholder="记录用途、特点、使用说明等详细信息" />
+          <div class="nav-form-row"><label>分类<select v-model="form.categoryId"><option v-for="c in data.categories" :key="c.id" :value="c.id">{{c.name}}</option></select></label><Input v-model="form.tagsText" label="标签" placeholder="多个标签用逗号分隔" /></div>
           <label class="nav-check-label"><input v-model="form.favorite" type="checkbox"/>加入收藏</label>
-          <div class="nav-modal-actions"><button type="button" class="nav-btn nav-btn-light" @click="showForm=false">取消</button><button type="submit" class="nav-btn nav-btn-primary"><Check :size="15"/>保存更改</button></div>
+          <div class="nav-modal-actions"><Button type="button" class="nav-btn nav-btn-light" @click="showForm=false" variant="secondary">取消</Button><Button type="submit" class="nav-btn nav-btn-primary" variant="primary"><Check :size="15"/>保存更改</Button></div>
         </form>
       </Modal>
 
@@ -430,24 +431,24 @@ function iconFor(category) {
           <div v-if="admin" class="nav-authorized"><Check :size="20"/>当前已获得仓库写入权限。访问令牌仅保存在当前页面内存中。</div>
           <template v-else>
             <p>使用 GitHub Fine-grained Personal Access Token 授权。令牌不会写入网站源码，也不会保存到浏览器本地存储。</p>
-            <label class="nav-field-label">Personal Access Token<input v-model="adminTokenInput" type="password" autocomplete="off" placeholder="github_pat_…"/></label>
-            <button class="nav-btn nav-btn-primary nav-full" :disabled="busy" @click="loginAdmin"><LogIn :size="15"/>{{busy ? '正在验证…' : '验证并登录'}}</button>
+            <Input v-model="adminTokenInput" label="Personal Access Token" type="password" autocomplete="off" placeholder="github_pat_…" />
+            <Button class="nav-btn nav-btn-primary nav-full" :disabled="busy" @click="loginAdmin" type="button" variant="primary"><LogIn :size="15"/>{{busy ? '正在验证…' : '验证并登录'}}</Button>
             <p class="nav-security-note"><Info :size="14"/>请在 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">GitHub 设置</a>创建 Fine-grained token：Repository access 仅选择 shenshou/MyOnlineTools；Repository permissions 中将 Contents 设为 Read and write。建议设置有效期。不要把令牌发给任何人。</p>
           </template>
         </div>
-        <div class="nav-modal-actions"><button v-if="admin" class="nav-btn nav-btn-light nav-danger" @click="logout"><LogOut :size="15"/>退出管理员</button><button class="nav-btn nav-btn-light" @click="showAdmin=false">关闭</button></div>
+        <div class="nav-modal-actions"><Button v-if="admin" class="nav-btn nav-btn-light nav-danger" @click="logout" type="button" variant="secondary"><LogOut :size="15"/>退出管理员</Button><Button class="nav-btn nav-btn-light" @click="showAdmin=false" type="button" variant="secondary">关闭</Button></div>
       </Modal>
 
         <Modal v-model="showImport" title="导入网址数据" size="md">
         
-        <div class="nav-modal-body"><p>选择此前导出的 navigation.json 文件，或直接粘贴 JSON 内容。</p><label class="nav-file-pick"><FileJson :size="17"/>选择 JSON 文件<input type="file" accept=".json,application/json" @change="openImportFile"/></label><textarea v-model="importText" rows="9" placeholder="粘贴 JSON 数据…"></textarea><div class="nav-radio-row"><label><input v-model="importMode" type="radio" value="merge"/>合并导入（按网址去重）</label><label><input v-model="importMode" type="radio" value="replace"/>覆盖导入</label></div></div>
-        <div class="nav-modal-actions"><button class="nav-btn nav-btn-light" @click="showImport=false">取消</button><button class="nav-btn nav-btn-primary" @click="importData"><Upload :size="15"/>开始导入</button></div>
+        <div class="nav-modal-body"><p>选择此前导出的 navigation.json 文件，或直接粘贴 JSON 内容。</p><label class="nav-file-pick"><FileJson :size="17"/>选择 JSON 文件<input type="file" accept=".json,application/json" @change="openImportFile"/></label><Textarea v-model="importText" label="JSON 数据" rows="9" placeholder="粘贴 JSON 数据…" /><div class="nav-radio-row"><label><input v-model="importMode" type="radio" value="merge"/>合并导入（按网址去重）</label><label><input v-model="importMode" type="radio" value="replace"/>覆盖导入</label></div></div>
+        <div class="nav-modal-actions"><Button class="nav-btn nav-btn-light" @click="showImport=false" type="button" variant="secondary">取消</Button><Button class="nav-btn nav-btn-primary" @click="importData" type="button" variant="primary"><Upload :size="15"/>开始导入</Button></div>
       </Modal>
 
         <Modal v-model="showCategoryManager" title="管理分类" size="lg">
         
-        <div class="nav-modal-body"><div class="nav-add-category"><input v-model="newCategory" placeholder="输入新分类名称" @keydown.enter.prevent="addCategory"/><button class="nav-btn nav-btn-primary" @click="addCategory"><Plus :size="14"/>添加</button></div><div v-for="c in data.categories" :key="c.id" class="nav-category-edit"><span>{{iconFor(c)}}</span><input v-if="categoryEdit!==null && categoryEdit.id===c.id" v-model="categoryEdit.name" @keydown.enter="renameCategory(c)"/><strong v-else>{{c.name}}</strong><select v-model="c.icon" aria-label="分类图标"><option value="bot">🤖 AI</option><option value="code">💻 开发</option><option value="palette">🎨 设计</option><option value="clapperboard">🎬 娱乐</option><option value="download">⬇️ 下载</option><option value="graduation-cap">🎓 学习</option><option value="globe">🌐 实用</option><option value="folder">📁 文件夹</option></select><span class="nav-category-count">{{categoryCounts[c.id] || 0}} 个网址</span><button class="nav-icon-action" @click="moveCategory(c,-1)" title="上移分类"><ArrowUp :size="14"/></button><button class="nav-icon-action" @click="moveCategory(c,1)" title="下移分类"><ArrowDown :size="14"/></button><button class="nav-icon-action" @click="categoryEdit={id:c.id,name:c.name}"><Pencil :size="14"/></button><button class="nav-icon-action nav-danger" @click="removeCategory(c)"><Trash2 :size="14"/></button><button v-if="categoryEdit!==null && categoryEdit.id===c.id" class="nav-icon-action" @click="renameCategory(c)"><Check :size="14"/></button></div></div>
-        <div class="nav-modal-actions"><button class="nav-btn nav-btn-light" @click="showCategoryManager=false">完成</button></div>
+        <div class="nav-modal-body"><div class="nav-add-category"><Input v-model="newCategory" placeholder="输入新分类名称" @keydown.enter.prevent="addCategory" /><Button class="nav-btn nav-btn-primary" @click="addCategory" type="button" variant="primary"><Plus :size="14"/>添加</Button></div><div v-for="c in data.categories" :key="c.id" class="nav-category-edit"><span>{{iconFor(c)}}</span><input v-if="categoryEdit!==null && categoryEdit.id===c.id" v-model="categoryEdit.name" @keydown.enter="renameCategory(c)"/><strong v-else>{{c.name}}</strong><Select v-model="c.icon" :options="categoryIconOptions" aria-label="分类图标" /><span class="nav-category-count">{{categoryCounts[c.id] || 0}} 个网址</span><Button class="nav-icon-action" @click="moveCategory(c,-1)" title="上移分类" type="button" variant="ghost" size="sm"><ArrowUp :size="14"/></Button><Button class="nav-icon-action" @click="moveCategory(c,1)" title="下移分类" type="button" variant="ghost" size="sm"><ArrowDown :size="14"/></Button><Button class="nav-icon-action" @click="categoryEdit={id:c.id,name:c.name}" type="button" variant="ghost" size="sm"><Pencil :size="14"/></Button><Button class="nav-icon-action nav-danger" @click="removeCategory(c)" type="button" variant="ghost" size="sm"><Trash2 :size="14"/></Button><Button v-if="categoryEdit!==null && categoryEdit.id===c.id" class="nav-icon-action" @click="renameCategory(c)" type="button" variant="ghost" size="sm"><Check :size="14"/></Button></div></div>
+        <div class="nav-modal-actions"><Button class="nav-btn nav-btn-light" @click="showCategoryManager=false" type="button" variant="secondary">完成</Button></div>
       </Modal>
 
         <div v-if="dirty && admin" class="nav-save-bar"><span><AlertCircle :size="16"/>有未保存的更改</span><Button class="nav-btn nav-btn-primary" :loading="busy" :disabled="busy" @click="saveToGitHub"><Save :size="15"/>{{busy ? '正在保存…' : '保存到 GitHub'}}</Button></div>

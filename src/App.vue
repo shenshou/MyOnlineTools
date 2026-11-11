@@ -10,6 +10,7 @@ const route = useRoute()
 const router = useRouter()
 const prefs = usePreferences()
 const query = ref('')
+const searchInput = ref(null)
 const menuOpen = ref(false)
 const navigationWebsites = ref([])
 const searchLoading = ref(false)
@@ -79,10 +80,17 @@ function goToWebsite(website) {
 function search() {
   const firstTool = toolResults.value[0]
   const firstWebsite = websiteResults.value[0]
-  if (firstTool && (!firstWebsite || toolResults.value.length + websiteResults.value.length === 1)) {
-    goToTool(firstTool)
-  } else if (firstWebsite && toolResults.value.length + websiteResults.value.length === 1) {
-    goToWebsite(firstWebsite)
+  if (firstTool) goToTool(firstTool)
+  else if (firstWebsite) goToWebsite(firstWebsite)
+}
+function handleGlobalShortcut(event) {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    searchInput.value?.focus()
+    searchInput.value?.select()
+  } else if (event.key === 'Escape') {
+    query.value = ''
+    searchInput.value?.blur()
   }
 }
 function handleNavigationDataUpdated(event) {
@@ -99,9 +107,11 @@ function closeMobileNav() { menuOpen.value = false }
 onMounted(() => {
   loadSearchWebsites()
   window.addEventListener('mot-navigation-data-updated', handleNavigationDataUpdated)
+  window.addEventListener('keydown', handleGlobalShortcut)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('mot-navigation-data-updated', handleNavigationDataUpdated)
+  window.removeEventListener('keydown', handleGlobalShortcut)
 })
 </script>
 
@@ -116,7 +126,7 @@ onBeforeUnmount(() => {
         <div class="global-search">
           <form class="header-search" @submit.prevent="search">
             <Search :size="17"/>
-            <input v-model="query" placeholder="全局搜索工具、网站…" autocomplete="off" @keydown.esc="query=''"/>
+            <input ref="searchInput" v-model="query" placeholder="全局搜索工具、网站…" autocomplete="off" @keydown.esc="query=''"/>
             <kbd>⌘ K</kbd>
           </form>
           <div v-if="normalizedQuery" class="global-search-results">

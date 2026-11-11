@@ -76,7 +76,18 @@ MyOnlineTools 收集并整合常用的小型在线工具，重点关注使用效
 | [lucide-vue-next](https://lucide.dev/) | 图标组件 |
 | 原生 CSS | 页面布局、主题与视觉样式 |
 
-项目使用 **JavaScript**，不使用 TypeScript。
+项目使用 **JavaScript**，不使用 TypeScript。全站采用自建的轻量共享 UI 组件，不依赖大型 UI 框架。
+
+## 共享 UI 与设计系统
+
+共享组件位于 `src/components/ui/`，通过 `src/components/ui/index.js` 统一导出，当前包括：
+
+- **交互基础：** Button、Input、Textarea、Select、Tabs、Dropdown、Tooltip。
+- **反馈与状态：** Modal、ConfirmDialog、ToastContainer、EmptyState、Loading。
+- **统一样式：** `src/styles/tokens.css` 定义浅色/深色主题语义色、字体、间距、圆角、阴影、焦点状态和层级变量。
+- **业务组件：** 工具卡片与网址导航页面继续保留在各自功能模块中，避免把业务规则塞进通用组件。
+
+页面优先复用共享控件；复杂编辑器等具有专用交互的区域仍保留原生控件和独立样式。
 
 ## 本地运行
 
@@ -128,6 +139,10 @@ MyOnlineTools/
 ├── src/
 │   ├── assets/              # 项目资源
 │   ├── components/          # 通用 Vue 组件
+│   │   └── ui/              # 共享 UI 组件与使用说明
+│   ├── composables/         # Toast、确认弹窗等交互逻辑
+│   ├── styles/
+│   │   └── tokens.css       # 全局设计令牌与主题变量
 │   ├── data/
 │   │   └── tools.js         # 工具清单、分类与元数据
 │   ├── modules/
