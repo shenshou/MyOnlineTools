@@ -1,28 +1,16 @@
 # UI Components
 
-This directory contains reusable, presentation-focused UI components shared across the application.
+Shared Vue 3 primitives; no third-party UI framework.
+- ToastContainer: global non-blocking notifications via useToast().
+- Modal: Teleport dialog with scroll lock, focus restoration, keyboard focus loop, Escape/overlay dismissal, and slots.
+- ConfirmDialog: promise-based global confirmation via useConfirm().confirm(options); resolves false on cancellation.
+- Button: primary, secondary, ghost, danger variants and sizes.
+- Input: labeled v-model input with hint/error.
+- Select: native select supporting primitive or { value, label } options.
+- Dropdown: action menu.
+- Tooltip: hover/focus hint.
+- Tabs: controlled tab switcher.
+- EmptyState: empty view with optional action.
+- Loading: inline/block loading indicator.
 
-## Conventions
-
-- Keep generic UI components here; keep feature-specific components inside their feature module (for example, navigation components stay in `modules/navigation/components`).
-- Keep reusable stateful logic in `src/composables` (for example, `useToast.js`); visual components should consume that logic rather than duplicate it.
-- Use the shared design tokens in `src/styles/tokens.css` for colors, typography, spacing, radius, shadows, focus, and layering. Tokens are theme-aware; avoid hard-coded palette values in new components.
-- Keep global layout and feature styles in `src/style.css`; keep design primitives and theme values in `src/styles/tokens.css`.
-- Do not introduce a third-party UI framework or a second styling system for an individual component.
-- Components should expose a small, explicit prop/event API, support keyboard and screen-reader use where applicable, and handle narrow screens.
-- Export shared components through `index.js`; import from this entry point in application code.
-- Add components when a real use case exists. Avoid placeholder components and speculative abstractions.
-
-## Design tokens
-
-- `src/styles/tokens.css` is the single source of truth for semantic colors and shared visual primitives.
-- Dark mode overrides semantic tokens through `:root[data-theme='dark']`; components should not need their own dark-mode palette.
-- Existing legacy variables such as `--bg`, `--surface`, `--muted`, `--primary`, and `--shadow` remain available for current styles.
-
-## Current components
-
-- `ToastContainer.vue`: application-level, non-blocking feedback surface. Use `useToast()` from `src/composables/useToast.js` to display and dismiss notifications.
-
-## Planned additions
-
-Add modal, confirmation, form controls, and other primitives incrementally when repeated application needs justify them.
+Import from index.js. Shared tokens live in src/styles/tokens.css. Feature-specific UI stays in its feature module.

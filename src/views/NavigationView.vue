@@ -9,12 +9,14 @@ import {
 import { defaultNavigationData } from '../modules/navigation/defaultData'
 import WebsiteFavicon from '../modules/navigation/components/WebsiteFavicon.vue'
 import { useToast } from '../composables/useToast'
+import { useConfirm } from '../composables/useConfirm'
 import {
   setAccessToken, clearAccessToken, verifyAdminToken, restoreAdminSession, saveNavigationData, fetchNavigationData,
 } from '../modules/navigation/github'
 
 const route = useRoute()
 const { showToast } = useToast()
+const { confirm } = useConfirm()
 const data = ref(structuredClone(defaultNavigationData))
 const baseline = ref('')
 const loading = ref(true)
@@ -142,14 +144,14 @@ function openEdit(item) {
   selectedWebsite.value = null
   showForm.value = true
 }
-function saveForm() {
+async function saveForm() {
   if (!admin.value) { showAdmin.value = true; return }
   try {
     const name = form.value.name.trim()
     if (!name) throw new Error('请填写网站名称')
     const url = normalizeUrl(form.value.url)
     const duplicate = data.value.websites.find(w => w.url.toLowerCase() === url.toLowerCase() && w.id !== editingId.value)
-    if (duplicate && !window.confirm(`该网址已存在：${duplicate.name}。仍然保存吗？`)) return
+    if (duplicate) { const ok = await confirm({ title: '网址可能重复', message: `该网址已存在：${duplicate.name}。仍然保存吗？` }); if (!ok) return }
     const now = Date.now()
     const tags = [...new Set(form.value.tagsText.split(/[,，]/).map(t => t.trim()).filter(Boolean))]
     if (editingId.value) {
@@ -166,9 +168,10 @@ function saveForm() {
     markMessage('更改已暂存在当前页面，请点击「保存到 GitHub」同步。')
   } catch (error) { markError(error.message || '请检查输入内容') }
 }
-function deleteWebsite(item) {
+async function deleteWebsite(item) {
   if (!admin.value) { showAdmin.value = true; return }
-  if (!window.confirm(`确定删除「${item.name}」吗？此操作将在保存后写入仓库。`)) return
+  const ok = await confirm({ title: '删除网址', message: `确定删除「${item.name}」吗？此操作将在保存后写入仓库。`, confirmText: '删除', tone: 'danger' })
+  if (!ok) return
   data.value.websites = data.value.websites.filter(w => w.id !== item.id)
   selectedWebsite.value = null
   markMessage('已删除，尚未同步到 GitHub。')
@@ -249,7 +252,8 @@ async function importData() {
     if (incoming.schemaVersion !== 1 || !Array.isArray(incoming.categories) || !Array.isArray(incoming.websites)) throw new Error('JSON 结构不符合网址导航数据格式')
     if (incoming.websites.some(w => !w.id || !w.name || !w.url)) throw new Error('导入文件中存在缺少 ID、名称或网址的记录')
     if (importMode.value === 'replace') {
-      if (!window.confirm('覆盖导入将替换当前全部网址和分类，确定继续吗？')) return
+      const ok = await confirm({ title: '覆盖导入数据', message: '覆盖导入将替换当前全部网址和分类，确定继续吗？', confirmText: '覆盖导入', tone: 'danger' })
+      if (!ok) return
       data.value = { schemaVersion: 1, categories: incoming.categories, websites: incoming.websites, updatedAt: Date.now() }
     } else {
       const categories = [...data.value.categories]
@@ -294,11 +298,12 @@ function renameCategory(category) {
   category.name = name
   categoryEdit.value = null
 }
-function removeCategory(category) {
+async function removeCategory(category) {
   if (!admin.value) { showAdmin.value = true; return }
   if (data.value.categories.length <= 1) { markError('至少保留一个分类'); return }
   const target = data.value.categories.find(c => c.id !== category.id)
-  if (!window.confirm(`删除「${category.name}」并将其中网址移动到「${target.name}」？`)) return
+  const ok = await confirm({ title: '删除分类', message: `删除「${category.name}」并将其中网址移动到「${target.name}」？`, confirmText: '删除分类', tone: 'danger' })
+  if (!ok) return
   data.value.websites.forEach(w => { if (w.categoryId === category.id) w.categoryId = target.id })
   data.value.categories = data.value.categories.filter(c => c.id !== category.id)
   if (selectedCategory.value === category.id) selectedCategory.value = 'all'
