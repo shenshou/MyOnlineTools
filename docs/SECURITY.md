@@ -25,10 +25,12 @@ Use the administrator logout control to clear the token from the current tab. If
 
 ## Navigation data integrity
 
-- The public JSON is validated before being loaded into the editor or accepted from an import.
+- The public JSON is validated and normalized before it is loaded into the editor or accepted from an import.
+- The save module independently validates both the outgoing document and the expected baseline before making a write request. This prevents callers outside the editor from bypassing the data schema checks.
 - Before saving, the application compares the latest remote JSON with the baseline loaded by the current page.
 - The write then uses GitHub's current file SHA. If another update occurs after the comparison, GitHub rejects the stale SHA rather than accepting a blind overwrite.
-- A baseline mismatch cancels the save. Reload the latest data and reapply your intended edits; the application does not automatically merge concurrent changes.
+- A baseline mismatch cancels the save. A write-time SHA conflict is surfaced without an automatic retry: retrying with a new SHA without reconciling the user's pending edits could overwrite another administrator's changes.
+- After a conflict, reload the latest data and reapply the intended edits. The application does not automatically merge concurrent changes.
 - Export the navigation JSON periodically as an independent backup. Git history also preserves previous versions of the file and can be used to restore it.
 
 ## Browser storage

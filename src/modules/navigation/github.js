@@ -1,3 +1,5 @@
+import { normalizeNavigationData } from './validation'
+
 const OWNER = 'shenshou'
 const REPO = 'MyOnlineTools'
 const BRANCH = 'main'
@@ -74,9 +76,18 @@ export async function verifyAdminToken(token) {
 }
 
 function decodeBase64Utf8(value) {
-  const binary = atob(String(value || '').replace(/\s/g, ''))
+  const binary = atob(String(value || '').replace(/\\s/g, ''))
   const bytes = Uint8Array.from(binary, character => character.charCodeAt(0))
   return new TextDecoder().decode(bytes)
+}
+
+function encodeBase64Utf8(value) {
+  const bytes = new TextEncoder().encode(value)
+  let binary = ''
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000))
+  }
+  return btoa(binary)
 }
 
 function stableStringify(value) {
@@ -91,15 +102,26 @@ export async function saveNavigationData(data, expectedBaseline) {
   if (!accessToken) throw new Error('请先使用 GitHub 管理员账号授权')
   if (!expectedBaseline) throw new Error('缺少远端数据基线。请重新加载 GitHub 最新数据后再保存。')
 
+  // Validate before making any write request. The public JSON must never be replaced
+  // with a malformed document, even if a caller bypasses the editor's form validation.
+  const normalizedData = normalizeNavigationData(data)
+
+  let expectedData
+  try {
+    const parsed = typeof expectedBaseline === 'string' ? JSON.parse(expectedBaseline) : expectedBaseline
+    expectedData = normalizeNavigationData(parsed)
+  } catch {
+    throw new Error('本地数据基线无效，请重新加载后再保存')
+  }
+
   const path = `/repos/${OWNER}/${REPO}/contents/${DATA_PATH}`
   const current = await api(`${path}?ref=${BRANCH}`)
   let remoteData
-  try { remoteData = JSON.parse(decodeBase64Utf8(current.content)) }
-  catch { throw new Error('无法读取 GitHub 当前数据，已取消保存以避免覆盖') }
-
-  let expectedData
-  try { expectedData = typeof expectedBaseline === 'string' ? JSON.parse(expectedBaseline) : expectedBaseline }
-  catch { throw new Error('本地数据基线无效，请重新加载后再保存') }
+  try {
+    remoteData = normalizeNavigationData(JSON.parse(decodeBase64Utf8(current.content)))
+  } catch {
+    throw new Error('无法读取或校验 GitHub 当前数据，已取消保存以避免覆盖')
+  }
 
   if (stableStringify(remoteData) !== stableStringify(expectedData)) {
     const error = new Error('远端网址数据已被其他标签页或操作更新。为避免覆盖，已取消本次保存；请重新加载并重新应用修改。')
@@ -108,10 +130,9 @@ export async function saveNavigationData(data, expectedBaseline) {
     throw error
   }
 
-  const bytes = new TextEncoder().encode(JSON.stringify(data, null, 2) + '\n')
-  let binary = ''
-  bytes.forEach(byte => { binary += String.fromCharCode(byte) })
-  const encoded = btoa(binary)
+  const encoded = encodeBase64Utf8(JSON.stringify(normalizedData, null, 2) + '\n')
+  // GitHub's Contents API checks the file SHA again on PUT. A 409/422 response
+  // here means the file changed after our baseline read; never retry blindly.
   const result = await api(path, {
     method: 'PUT',
     body: JSON.stringify({
