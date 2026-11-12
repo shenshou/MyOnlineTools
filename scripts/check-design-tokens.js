@@ -16,7 +16,7 @@ function collect(directory) {
 
 collect(root)
 
-const colorPattern = /#[\da-fA-F]{3,8}\b|\b(?:rgb|rgba|hsl|hsla)\s*\(/g
+const colorPattern = /#[\da-fA-F]{3,8}\b|\b(?:rgb|rgba|hsl|hsla)\s*\(|(?:color|background(?:-color)?|border-color)\s*:\s*(?:white|black)\b/g
 const findings = []
 
 for (const path of files) {
