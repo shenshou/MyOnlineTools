@@ -18,31 +18,31 @@ export async function runTool(id, input, options = {}) {
     }
     case 'case': {
       const words = value.replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
-      const lower = words.map(w => w.toLowerCase())
+      const lower = words.map(word => word.toLowerCase())
       const mode = options.mode || 'camel'
       if (mode === 'upper') return value.toUpperCase()
       if (mode === 'lower') return value.toLowerCase()
       if (mode === 'snake') return lower.join('_')
       if (mode === 'kebab') return lower.join('-')
-      if (mode === 'pascal') return lower.map(w => w[0].toUpperCase()+w.slice(1)).join('')
-      return lower.map((w,i) => i ? w[0].toUpperCase()+w.slice(1) : w).join('')
+      if (mode === 'pascal') return lower.map(word => word[0].toUpperCase() + word.slice(1)).join('')
+      return lower.map((word, index) => index ? word[0].toUpperCase() + word.slice(1) : word).join('')
     }
-
-
     case 'color': {
-      const hex = value.trim().replace('#','')
+      const hex = value.trim().replace('#', '')
       if (!/^(?:[\da-f]{3}|[\da-f]{6})$/i.test(hex)) throw new Error('请输入 3 位或 6 位 HEX 颜色值，例如 #6366f1')
-      const full = hex.length === 3 ? [...hex].map(x=>x+x).join('') : hex
-      const r=parseInt(full.slice(0,2),16), g=parseInt(full.slice(2,4),16), b=parseInt(full.slice(4,6),16)
-      const [rr,gg,bb]=[r,g,b].map(x=>x/255)
-      const max=Math.max(rr,gg,bb), min=Math.min(rr,gg,bb), delta=max-min
-      let h=0, s=0, l=(max+min)/2
-      if(delta){s=delta/(1-Math.abs(2*l-1)); if(max===rr)h=60*(((gg-bb)/delta)%6); else if(max===gg)h=60*((bb-rr)/delta+2); else h=60*((rr-gg)/delta+4)}
-      return `HEX：#${full.toUpperCase()}\nRGB：rgb(${r}, ${g}, ${b})\nHSL：hsl(${Math.round((h+360)%360)}, ${Math.round(s*100)}%, ${Math.round(l*100)}%)`
+      const full = hex.length === 3 ? [...hex].map(char => char + char).join('') : hex
+      const r = parseInt(full.slice(0, 2), 16), g = parseInt(full.slice(2, 4), 16), b = parseInt(full.slice(4, 6), 16)
+      const [rr, gg, bb] = [r, g, b].map(channel => channel / 255)
+      const max = Math.max(rr, gg, bb), min = Math.min(rr, gg, bb), delta = max - min
+      let h = 0, s = 0, l = (max + min) / 2
+      if (delta) {
+        s = delta / (1 - Math.abs(2 * l - 1))
+        if (max === rr) h = 60 * (((gg - bb) / delta) % 6)
+        else if (max === gg) h = 60 * ((bb - rr) / delta + 2)
+        else h = 60 * ((rr - gg) / delta + 4)
+      }
+      return `HEX：#${full.toUpperCase()}\nRGB：rgb(${r}, ${g}, ${b})\nHSL：hsl(${Math.round((h + 360) % 360)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`
     }
-
-
-
     case 'magnet': {
       const prefix = 'magnet:?xt=urn:btih:'
       return value.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
@@ -52,11 +52,29 @@ export async function runTool(id, input, options = {}) {
     case 'regex': {
       const pattern = options.pattern ?? ''
       const flags = options.flags ?? 'g'
-      const re = new RegExp(pattern, flags)
-      const matches = [...value.matchAll(re)]
-      return matches.length ? matches.map((m,i)=>`${i+1}. ${m[0]}（位置 ${m.index}）`).join('\n') : '没有匹配结果'
+      if (pattern.length > 200) throw new Error('正则表达式不能超过 200 个字符')
+      if (value.length > 20000) throw new Error('待匹配文本不能超过 20,000 个字符')
+      return new Promise((resolve, reject) => {
+        const worker = new Worker(new URL('../workers/regex.worker.js', import.meta.url), { type: 'module' })
+        const timeout = setTimeout(() => {
+          worker.terminate()
+          reject(new Error('正则表达式执行超时，已终止本次匹配'))
+        }, 500)
+        worker.onmessage = event => {
+          clearTimeout(timeout)
+          worker.terminate()
+          if (event.data?.error) reject(new Error(event.data.error))
+          else resolve(event.data?.result || '没有匹配结果')
+        }
+        worker.onerror = () => {
+          clearTimeout(timeout)
+          worker.terminate()
+          reject(new Error('正则表达式工作线程启动失败'))
+        }
+        worker.postMessage({ pattern, flags, input: value })
+      })
     }
-
-    default: throw new Error('暂不支持此工具')
+    default:
+      throw new Error('暂不支持此工具')
   }
 }

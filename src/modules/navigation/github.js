@@ -5,23 +5,35 @@ const DATA_PATH = 'public/data/navigation.json'
 const API = 'https://api.github.com'
 
 const TOKEN_KEY = 'mot-navigation-github-token'
-let accessToken = typeof window !== 'undefined' ? window.sessionStorage.getItem(TOKEN_KEY) || '' : ''
+let accessToken = readSessionToken()
+
+function readSessionToken() {
+  try { return typeof window !== 'undefined' ? window.sessionStorage.getItem(TOKEN_KEY) || '' : '' }
+  catch { return '' }
+}
+
+function writeSessionToken(token) {
+  try {
+    if (typeof window === 'undefined') return
+    if (token) window.sessionStorage.setItem(TOKEN_KEY, token)
+    else window.sessionStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // Storage can be unavailable in restricted browsing contexts; keep the token in memory.
+  }
+}
 
 export function setAccessToken(token) {
-  accessToken = token || ''
-  if (typeof window !== 'undefined') {
-    if (accessToken) window.sessionStorage.setItem(TOKEN_KEY, accessToken)
-    else window.sessionStorage.removeItem(TOKEN_KEY)
-  }
+  accessToken = typeof token === 'string' ? token.trim() : ''
+  writeSessionToken(accessToken)
 }
 
 export function clearAccessToken() {
   accessToken = ''
-  if (typeof window !== 'undefined') window.sessionStorage.removeItem(TOKEN_KEY)
+  writeSessionToken('')
 }
 
 export async function restoreAdminSession() {
-  const token = typeof window !== 'undefined' ? window.sessionStorage.getItem(TOKEN_KEY) : ''
+  const token = readSessionToken()
   if (!token) return null
   try {
     const account = await verifyAdminToken(token)
@@ -33,13 +45,14 @@ export async function restoreAdminSession() {
   }
 }
 
-async function api(path, options = {}) {
+async function api(path, options = {}, token = accessToken) {
   const response = await fetch(API + path, {
     ...options,
     headers: {
       Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   })
@@ -53,22 +66,48 @@ async function api(path, options = {}) {
 }
 
 export async function verifyAdminToken(token) {
-  const previous = accessToken
-  accessToken = token
-  try {
-    const data = await api(`/repos/${OWNER}/${REPO}`)
-    if (!data.permissions?.push) throw new Error('当前 GitHub 账号没有此仓库的写入权限')
-    return data.full_name
-  } catch (error) {
-    accessToken = previous
-    throw error
-  }
+  const candidate = typeof token === 'string' ? token.trim() : ''
+  if (!candidate) throw new Error('请提供 GitHub 访问令牌')
+  const data = await api(`/repos/${OWNER}/${REPO}`, {}, candidate)
+  if (!data.permissions?.push) throw new Error('当前 GitHub 账号没有此仓库的写入权限')
+  return data.full_name
 }
 
-export async function saveNavigationData(data) {
+function decodeBase64Utf8(value) {
+  const binary = atob(String(value || '').replace(/\s/g, ''))
+  const bytes = Uint8Array.from(binary, character => character.charCodeAt(0))
+  return new TextDecoder().decode(bytes)
+}
+
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+export async function saveNavigationData(data, expectedBaseline) {
   if (!accessToken) throw new Error('请先使用 GitHub 管理员账号授权')
+  if (!expectedBaseline) throw new Error('缺少远端数据基线。请重新加载 GitHub 最新数据后再保存。')
+
   const path = `/repos/${OWNER}/${REPO}/contents/${DATA_PATH}`
   const current = await api(`${path}?ref=${BRANCH}`)
+  let remoteData
+  try { remoteData = JSON.parse(decodeBase64Utf8(current.content)) }
+  catch { throw new Error('无法读取 GitHub 当前数据，已取消保存以避免覆盖') }
+
+  let expectedData
+  try { expectedData = typeof expectedBaseline === 'string' ? JSON.parse(expectedBaseline) : expectedBaseline }
+  catch { throw new Error('本地数据基线无效，请重新加载后再保存') }
+
+  if (stableStringify(remoteData) !== stableStringify(expectedData)) {
+    const error = new Error('远端网址数据已被其他标签页或操作更新。为避免覆盖，已取消本次保存；请重新加载并重新应用修改。')
+    error.status = 409
+    error.code = 'STALE_BASELINE'
+    throw error
+  }
+
   const bytes = new TextEncoder().encode(JSON.stringify(data, null, 2) + '\n')
   let binary = ''
   bytes.forEach(byte => { binary += String.fromCharCode(byte) })
@@ -88,8 +127,6 @@ export async function saveNavigationData(data) {
 export async function fetchNavigationData() {
   const path = `/repos/${OWNER}/${REPO}/contents/${DATA_PATH}?ref=${BRANCH}&_=${Date.now()}`
 
-  // 管理员已登录时，通过 Contents API 读取 main 分支的最新文件，
-  // 避免 raw 文件 CDN 缓存短暂落后于刚提交的数据。
   if (accessToken) {
     const response = await fetch(API + path, {
       headers: {
@@ -105,21 +142,11 @@ export async function fetchNavigationData() {
       error.status = response.status
       throw error
     }
-    const content = await response.text()
-    const parsed = JSON.parse(content)
-    if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.categories) || !Array.isArray(parsed.websites)) {
-      throw new Error('GitHub 返回的网址数据格式不正确')
-    }
-    return parsed
+    return response.json()
   }
 
-  // 普通访客读取公开 JSON；使用唯一查询参数绕过中间缓存。
   const publicUrl = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${DATA_PATH}?v=${Date.now()}`
   const response = await fetch(publicUrl, { cache: 'no-store' })
   if (!response.ok) throw new Error(`读取公开网址数据失败（HTTP ${response.status}）`)
-  const parsed = await response.json()
-  if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.categories) || !Array.isArray(parsed.websites)) {
-    throw new Error('公开网址数据格式不正确')
-  }
-  return parsed
+  return response.json()
 }
