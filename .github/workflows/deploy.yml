@@ -33,7 +33,7 @@ jobs:
       - name: Synchronize dependency lockfile
         run: |
           npm install --package-lock-only --ignore-scripts
-          npm audit fix --package-lock-only --ignore-scripts
+          npm audit fix --ignore-scripts
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package-lock.json
