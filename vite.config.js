@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [vue()],
   base: '/MyOnlineTools/',
   test: {
-    environment: 'node',
+    environment: 'jsdom',
     include: ['src/**/*.test.js'],
   },
 })
