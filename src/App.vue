@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { Search, Command, Sun, Moon, Github, Menu, X, House, Compass, Wrench, Globe, ArrowUpRight } from 'lucide-vue-next'
 import { usePreferences } from './stores/preferences'
@@ -10,6 +10,7 @@ const route = useRoute()
 const router = useRouter()
 const prefs = usePreferences()
 const query = ref('')
+const activeSearchIndex = ref(-1)
 const searchInput = ref(null)
 const shortcutLabel = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
 const menuOpen = ref(false)
@@ -33,6 +34,31 @@ const websiteResults = computed(() => {
   ).slice(0, 5)
 })
 const hasSearchResults = computed(() => toolResults.value.length + websiteResults.value.length > 0)
+const searchResults = computed(() => [
+  ...toolResults.value.map(item => ({ type: 'tool', item })),
+  ...websiteResults.value.map(item => ({ type: 'website', item })),
+])
+watch(normalizedQuery, () => { activeSearchIndex.value = -1 })
+
+function selectSearchResult(result) {
+  if (!result) return
+  if (result.type === 'tool') goToTool(result.item)
+  else goToWebsite(result.item)
+}
+function handleSearchKeydown(event) {
+  if (event.key === 'Escape') {
+    query.value = ''
+    activeSearchIndex.value = -1
+    searchInput.value?.blur()
+    return
+  }
+  if (!['ArrowDown', 'ArrowUp'].includes(event.key) || !searchResults.value.length) return
+  event.preventDefault()
+  const count = searchResults.value.length
+  activeSearchIndex.value = event.key === 'ArrowDown'
+    ? (activeSearchIndex.value + 1) % count
+    : (activeSearchIndex.value <= 0 ? count - 1 : activeSearchIndex.value - 1)
+}
 
 const navigationGroups = [
   {
@@ -79,6 +105,10 @@ function goToWebsite(website) {
   menuOpen.value = false
 }
 function search() {
+  if (activeSearchIndex.value >= 0) {
+    selectSearchResult(searchResults.value[activeSearchIndex.value])
+    return
+  }
   const firstTool = toolResults.value[0]
   const firstWebsite = websiteResults.value[0]
   if (firstTool) goToTool(firstTool)
@@ -127,13 +157,13 @@ onBeforeUnmount(() => {
         <div class="global-search">
           <form class="header-search" @submit.prevent="search">
             <Search :size="17"/>
-            <input ref="searchInput" v-model="query" placeholder="全局搜索工具、网站…" autocomplete="off" @keydown.esc="query=''"/>
+            <input ref="searchInput" v-model="query" role="combobox" aria-label="全局搜索工具和网站" aria-autocomplete="list" aria-controls="global-search-results" :aria-expanded="Boolean(normalizedQuery)" :aria-activedescendant="activeSearchIndex >= 0 ? `global-search-option-${activeSearchIndex}` : undefined" placeholder="全局搜索工具、网站…" autocomplete="off" @keydown="handleSearchKeydown"/>
             <kbd>{{ shortcutLabel }}</kbd>
           </form>
-          <div v-if="normalizedQuery" class="global-search-results">
+          <div v-if="normalizedQuery" id="global-search-results" class="global-search-results" role="listbox" aria-label="搜索结果">
             <template v-if="toolResults.length">
               <div class="global-search-heading">在线工具</div>
-              <button v-for="tool in toolResults" :key="tool.id" class="global-search-item" @click="goToTool(tool)">
+              <button v-for="(tool, index) in toolResults" :key="tool.id" :id="`global-search-option-${index}`" role="option" :aria-selected="activeSearchIndex === index" :class="{ 'is-active': activeSearchIndex === index }" class="global-search-item" @mouseenter="activeSearchIndex = index" @click="goToTool(tool)">
                 <span class="global-search-icon"><Wrench :size="15"/></span>
                 <span class="global-search-copy"><strong>{{tool.name}}</strong><small>{{tool.desc}}</small></span>
                 <ArrowUpRight :size="15" class="global-search-arrow"/>
@@ -141,13 +171,13 @@ onBeforeUnmount(() => {
             </template>
             <template v-if="websiteResults.length">
               <div class="global-search-heading">网址导航</div>
-              <button v-for="website in websiteResults" :key="website.id" class="global-search-item" @click="goToWebsite(website)">
+              <button v-for="(website, index) in websiteResults" :key="website.id" :id="`global-search-option-${toolResults.length + index}`" role="option" :aria-selected="activeSearchIndex === toolResults.length + index" :class="{ 'is-active': activeSearchIndex === toolResults.length + index }" class="global-search-item" @mouseenter="activeSearchIndex = toolResults.length + index" @click="goToWebsite(website)">
                 <span class="global-search-icon"><Globe :size="15"/></span>
                 <span class="global-search-copy"><strong>{{website.name}}</strong><small>{{website.url}} · {{website.categoryName}}</small></span>
                 <ArrowUpRight :size="15" class="global-search-arrow"/>
               </button>
             </template>
-            <div v-if="!hasSearchResults" class="global-search-empty">
+            <div v-if="!hasSearchResults" class="global-search-empty" role="status" aria-live="polite">
               {{searchLoading ? '正在加载网址数据…' : '没有找到匹配的工具或网站'}}
             </div>
             <div v-if="toolResults.length + websiteResults.length > 0" class="global-search-footer">
@@ -228,7 +258,7 @@ onBeforeUnmount(() => {
 .global-search-results{position:absolute;top:calc(100% + 9px);left:0;right:0;z-index:60;max-height:min(70vh,520px);overflow:auto;padding:7px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 38px #10132324}
 .global-search-heading{padding:9px 10px 6px;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.4px}
 .global-search-item{width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;border:0;border-radius:8px;background:transparent;text-align:left;color:var(--text)}
-.global-search-item:hover{background:var(--surface-2)}
+.global-search-item:hover,.global-search-item.is-active{background:var(--surface-2)}
 .global-search-icon{width:29px;height:29px;flex-shrink:0;display:grid;place-items:center;border-radius:8px;background:var(--surface-2);color:var(--primary)}
 .global-search-copy{min-width:0;flex:1;display:grid;gap:3px}
 .global-search-copy strong{font-size:11px;font-weight:650}

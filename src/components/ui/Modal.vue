@@ -1,5 +1,5 @@
 <script setup>
-import { watch, nextTick, onBeforeUnmount } from 'vue'
+import { watch, nextTick, onBeforeUnmount, ref } from 'vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -9,52 +9,70 @@ const props = defineProps({
   closeOnEsc: { type: Boolean, default: true },
 })
 const emit = defineEmits(['update:modelValue', 'close'])
+const panelRef = ref(null)
 let previousFocus = null
 let previousOverflow = ''
+let lockActive = false
 
 function close() {
   emit('update:modelValue', false)
   emit('close')
 }
 
+function getFocusableElements(panel) {
+  return [...panel.querySelectorAll(
+    'a[href], area[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]',
+  )].filter(element =>
+    element.getAttribute('aria-hidden') !== 'true'
+    && !element.hasAttribute('hidden')
+    && element.getAttribute('aria-disabled') !== 'true'
+    && element.getClientRects().length > 0,
+  )
+}
+
 function handleKeydown(event) {
+  const panel = panelRef.value
+  if (!panel) return
+
   if (event.key === 'Escape' && props.closeOnEsc) {
     event.preventDefault()
     close()
     return
   }
   if (event.key !== 'Tab') return
-  const panel = document.querySelector('[data-modal]')
-  if (!panel) return
-  const focusable = [...panel.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')]
-    .filter(element => element.getAttribute('aria-hidden') !== 'true' && element.offsetParent !== null)
+
+  const focusable = getFocusableElements(panel)
   if (!focusable.length) {
     event.preventDefault()
     panel.focus()
     return
   }
+
   const first = focusable[0]
   const last = focusable[focusable.length - 1]
-  if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) {
+  const focusOutside = !panel.contains(document.activeElement)
+  if (event.shiftKey && (document.activeElement === first || focusOutside)) {
     event.preventDefault()
     last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
+  } else if (!event.shiftKey && (document.activeElement === last || focusOutside)) {
     event.preventDefault()
     first.focus()
   }
 }
 
 watch(() => props.modelValue, async open => {
-  if (open) {
+  if (open && !lockActive) {
+    lockActive = true
     previousFocus = document.activeElement
     previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     window.addEventListener('keydown', handleKeydown)
     await nextTick()
-    const panel = document.querySelector('[data-modal]')
-    const first = panel?.querySelector('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)')
+    const panel = panelRef.value
+    const first = panel ? getFocusableElements(panel)[0] : null
     ;(first || panel)?.focus()
-  } else {
+  } else if (!open && lockActive) {
+    lockActive = false
     window.removeEventListener('keydown', handleKeydown)
     document.body.style.overflow = previousOverflow
     if (previousFocus?.isConnected) previousFocus.focus()
@@ -63,15 +81,17 @@ watch(() => props.modelValue, async open => {
 })
 
 onBeforeUnmount(() => {
+  if (!lockActive) return
   window.removeEventListener('keydown', handleKeydown)
   document.body.style.overflow = previousOverflow
+  if (previousFocus?.isConnected) previousFocus.focus()
 })
 </script>
 
 <template>
   <Teleport to="body">
     <div v-if="modelValue" class="overlay" @mousedown.self="props.closeOnOverlay && close()">
-      <section class="panel" :class="size" role="dialog" aria-modal="true" :aria-label="title || '对话框'" data-modal tabindex="-1">
+      <section ref="panelRef" class="panel" :class="size" role="dialog" aria-modal="true" :aria-label="title || '对话框'" data-modal tabindex="-1">
         <header v-if="title || $slots.header">
           <slot name="header"><h2>{{ title }}</h2></slot>
           <button type="button" aria-label="关闭" @click="close">×</button>
