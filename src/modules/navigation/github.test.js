@@ -114,6 +114,21 @@ describe('saveNavigationData', () => {
     expect(body.sha).toBe('remote-file-sha')
   })
 
+
+  it('accepts line-wrapped base64 content returned by the Contents API', async () => {
+    const wrappedContent = encodeBase64Utf8(baseline).replace(/(.{64})/g, '$1\\n')
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        sha: 'remote-file-sha',
+        content: wrappedContent,
+      }))
+      .mockResolvedValueOnce(jsonResponse({ commit: { sha: 'wrapped-content-commit' } }))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(saveNavigationData(baseline, baseline)).resolves.toBe('wrapped-content-commit')
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
   it('surfaces a GitHub write conflict without a blind retry', async () => {
     const fetch = vi.fn()
       .mockResolvedValueOnce(jsonResponse({

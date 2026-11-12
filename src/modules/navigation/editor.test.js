@@ -14,10 +14,10 @@ const website = {
 describe('navigation editor operations', () => {
   it('creates a normalized website record with stable creation metadata', () => {
     const record = buildWebsiteRecord({
-      name: ' 新网站 ', url: 'example.org', tagsText: 'AI, 工具,AI', categoryId: 'tools',
+      name: ' 新网站 ', url: 'example.org:8443', tagsText: 'AI, 工具,AI', categoryId: 'tools',
     }, [website], null, 99, 'site-2')
     expect(record).toMatchObject({
-      id: 'site-2', name: '新网站', url: 'https://example.org/', categoryId: 'tools',
+      id: 'site-2', name: '新网站', url: 'https://example.org:8443/', categoryId: 'tools',
       tags: ['AI', '工具'], sortOrder: 2, createdAt: 99, updatedAt: 99,
     })
   })

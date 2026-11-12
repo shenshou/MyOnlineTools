@@ -22,7 +22,7 @@ Measured in GitHub Actions on 2026-11-12 (Node 22, Vite production build):
 
 | Metric | Measured | Budget |
 | --- | ---: | ---: |
-| Total JavaScript, gzip | 79.4 KB | 200 KB |
+| Total JavaScript, gzip | 79.5 KB | 200 KB |
 | Largest JavaScript chunk, gzip | 51.6 KB | 100 KB |
 | Total CSS, gzip | 10.3 KB | 40 KB |
 
