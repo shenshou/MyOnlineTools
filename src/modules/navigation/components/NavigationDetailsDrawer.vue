@@ -110,8 +110,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.details-backdrop { position: fixed; inset: 0; z-index: var(--z-overlay); display: flex; justify-content: flex-end; background: #10132266; }
-.details-panel { display: flex; flex-direction: column; width: min(470px, 100%); height: 100%; background: var(--surface); color: var(--text); box-shadow: -10px 0 35px #0002; }
+.details-backdrop { position: fixed; inset: 0; z-index: var(--z-overlay); display: flex; justify-content: flex-end; background: var(--overlay-backdrop); }
+.details-panel { display: flex; flex-direction: column; width: min(470px, 100%); height: 100%; background: var(--surface); color: var(--text); box-shadow: var(--shadow-lg); }
 .details-panel:focus { outline: 0; }
 .details-head { display: flex; align-items: center; justify-content: space-between; min-height: 58px; padding: 0 20px; border-bottom: 1px solid var(--line); }
 .details-head h2 { margin: 0; font-size: 13px; }

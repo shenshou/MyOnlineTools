@@ -39,7 +39,7 @@
   --danger-soft: #fff0f0;
   --info: #4d79d9;
   --info-soft: #eaf1ff;
-  --on-primary: #ffffff;
+  --on-primary: #ffffff;\n  --overlay-backdrop: rgba(16, 19, 34, .4);\n  --modal-backdrop: rgba(17, 24, 39, .6);
 
   /* Existing compatibility aliases */
   --shadow: 0 8px 28px rgba(31, 38, 75, .045);
@@ -105,7 +105,7 @@
   --danger-soft: #3b242b;
   --info: #83a8f5;
   --info-soft: #202f4d;
-  --on-primary: #17152d;
+  --on-primary: #17152d;\n  --overlay-backdrop: rgba(0, 0, 0, .58);\n  --modal-backdrop: rgba(0, 0, 0, .68);
 
   --shadow: 0 8px 28px rgba(0, 0, 0, .18);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, .16);

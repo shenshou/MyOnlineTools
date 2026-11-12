@@ -4,9 +4,9 @@ import { join, resolve } from 'node:path'
 
 const assetsDirectory = resolve(process.cwd(), 'dist/assets')
 const budgets = {
-  totalJavaScriptGzip: 450 * 1024,
-  largestJavaScriptGzip: 300 * 1024,
-  totalCssGzip: 120 * 1024,
+  totalJavaScriptGzip: 200 * 1024,
+  largestJavaScriptGzip: 100 * 1024,
+  totalCssGzip: 40 * 1024,
 }
 
 function collectFiles(directory) {

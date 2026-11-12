@@ -104,7 +104,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.overlay { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: 16px; background: #11182799; }
+.overlay { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: 16px; background: var(--modal-backdrop); }
 .panel { width: 100%; max-height: 90vh; overflow: auto; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); }
 .panel:focus { outline: 0; }
 .sm { max-width: 380px; }
