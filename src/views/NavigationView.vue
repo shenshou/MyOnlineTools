@@ -7,6 +7,7 @@ import {
   Settings, FileJson, RefreshCw, Info, Bookmark, CircleHelp, ArrowUp, ArrowDown
 } from 'lucide-vue-next'
 import { defaultNavigationData } from '../modules/navigation/defaultData'
+import { normalizeNavigationData } from '../modules/navigation/validation'
 import WebsiteFavicon from '../modules/navigation/components/WebsiteFavicon.vue'
 import { useToast } from '../composables/useToast'
 import { useConfirm } from '../composables/useConfirm'
@@ -28,8 +29,17 @@ const search = ref('')
 const selectedCategory = ref('all')
 const selectedTag = ref('')
 const favoritesOnly = ref(false)
-const viewMode = ref(localStorage.getItem('mot-navigation-view') || 'card')
-const sortMode = ref(localStorage.getItem('mot-navigation-sort') || 'custom')
+function readPreference(key, fallback, allowed) {
+  try {
+    const value = localStorage.getItem(key)
+    return allowed.includes(value) ? value : fallback
+  } catch { return fallback }
+}
+function writePreference(key, value) {
+  try { localStorage.setItem(key, value) } catch { /* Preferences remain available for this page session. */ }
+}
+const viewMode = ref(readPreference('mot-navigation-view', 'card', ['card', 'list']))
+const sortMode = ref(readPreference('mot-navigation-sort', 'custom', ['custom', 'newest', 'updated', 'name-asc', 'name-desc']))
 const selectedWebsite = ref(null)
 const showForm = ref(false)
 const editingId = ref(null)
@@ -79,15 +89,15 @@ function normalizeUrl(value) {
   if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('只支持 HTTP 或 HTTPS 网址')
   return parsed.href
 }
-function setView(mode) { viewMode.value = mode; localStorage.setItem('mot-navigation-view', mode) }
-function setSort(mode) { sortMode.value = mode; localStorage.setItem('mot-navigation-sort', mode) }
+function setView(mode) { if (!['card', 'list'].includes(mode)) return; viewMode.value = mode; writePreference('mot-navigation-view', mode) }
+function setSort(mode) { if (!['custom', 'newest', 'updated', 'name-asc', 'name-desc'].includes(mode)) return; sortMode.value = mode; writePreference('mot-navigation-sort', mode) }
 function markMessage(text) { message.value = text; errorMessage.value = '' }
 function markError(text) { errorMessage.value = text; message.value = '' }
 
 const NAVIGATION_CACHE_KEY = 'mot-navigation-data-cache'
 
 function isValidNavigationData(value) {
-  return value?.schemaVersion === 1 && Array.isArray(value.categories) && Array.isArray(value.websites)
+  try { normalizeNavigationData(value); return true } catch { return false }
 }
 
 async function loadData() {
@@ -96,7 +106,7 @@ async function loadData() {
   try {
     const remote = await fetchNavigationData()
     if (!isValidNavigationData(remote)) throw new Error('网址数据格式不正确')
-    data.value = remote
+    data.value = normalizeNavigationData(remote)
     baseline.value = snapshot()
     try {
       const serialized = JSON.stringify(remote)
@@ -109,7 +119,7 @@ async function loadData() {
     try {
       const cached = JSON.parse(sessionStorage.getItem(NAVIGATION_CACHE_KEY) || 'null')
       if (isValidNavigationData(cached)) {
-        data.value = cached
+        data.value = normalizeNavigationData(cached)
         baseline.value = snapshot()
         loadError.value = `暂时无法读取 GitHub 最新数据，当前显示本标签页上次成功读取的数据。原因：${error.message}`
       } else {
@@ -217,7 +227,8 @@ async function saveToGitHub() {
   markMessage('')
   try {
     const payload = { ...data.value, updatedAt: Date.now() }
-    const sha = await saveNavigationData(payload)
+    if (!baseline.value) throw new Error('当前没有可信的数据基线，请先重新加载 GitHub 最新数据。')
+    const sha = await saveNavigationData(payload, baseline.value)
     data.value = payload
     baseline.value = snapshot()
     window.dispatchEvent(new CustomEvent('mot-navigation-data-updated', { detail: payload }))
@@ -237,7 +248,7 @@ async function loginAdmin() {
     setAccessToken(token)
     admin.value = true
     adminTokenInput.value = ''
-    markMessage(`已授权：${account}。访问令牌仅保存在当前页面内存中。`)
+    markMessage(`已授权：${account}。访问令牌保存在当前标签页会话中，退出管理员模式后会清除。`)
   } catch (error) {
     markError(error.message || 'GitHub 授权失败')
   } finally { busy.value = false }
@@ -251,9 +262,7 @@ function logout() {
 async function importData() {
   if (!admin.value) { showAdmin.value = true; return }
   try {
-    const incoming = JSON.parse(importText.value)
-    if (incoming.schemaVersion !== 1 || !Array.isArray(incoming.categories) || !Array.isArray(incoming.websites)) throw new Error('JSON 结构不符合网址导航数据格式')
-    if (incoming.websites.some(w => !w.id || !w.name || !w.url)) throw new Error('导入文件中存在缺少 ID、名称或网址的记录')
+    const incoming = normalizeNavigationData(JSON.parse(importText.value))
     if (importMode.value === 'replace') {
       const ok = await confirm({ title: '覆盖导入数据', message: '覆盖导入将替换当前全部网址和分类，确定继续吗？', confirmText: '覆盖导入', tone: 'danger' })
       if (!ok) return
@@ -268,7 +277,12 @@ async function importData() {
         const url = normalizeUrl(w.url)
         const existing = urlMap.get(url.toLowerCase())
         if (existing) { Object.assign(existing, w, { id: existing.id, url, updatedAt: Date.now() }); updated++ }
-        else { websites.push({ ...w, url }); added++ }
+        else {
+          const inserted = { ...w, url }
+          websites.push(inserted)
+          urlMap.set(url.toLowerCase(), inserted)
+          added++
+        }
       }
       data.value = { schemaVersion: 1, categories, websites, updatedAt: Date.now() }
       markMessage(`合并完成：新增 ${added} 条，更新 ${updated} 条。尚未保存到 GitHub。`)
