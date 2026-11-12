@@ -22,9 +22,9 @@ The remaining work is primarily final acceptance, periodic performance observati
 | Production JavaScript | 80.6 KB gzip, 8 chunks |
 | Largest JavaScript chunk | 51.6 KB gzip |
 | Production CSS | 10.9 KB gzip |
-| Lighthouse mobile Performance | 95/100 (latest sample; recent range 95–99) |
-| FCP / LCP | 1,680 ms / 2,467 ms |
-| TBT / CLS | 134 ms / 0.000 |
+| Lighthouse mobile Performance | 99/100 (latest sample; recent range 95–99) |
+| FCP / LCP | 1,402 ms / 2,091 ms |
+| TBT / CLS | 45 ms / 0.037 |
 | GitHub Pages deployment | Successful for the latest fully validated code snapshot |
 
 Lighthouse results are lab measurements from GitHub-hosted runners. They are useful for regression comparison, not a guarantee of real-user Core Web Vitals.
