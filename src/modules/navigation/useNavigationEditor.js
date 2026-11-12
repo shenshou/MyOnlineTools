@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { normalizeNavigationData } from './validation'
+import { MAX_NAVIGATION_DOCUMENT_BYTES, normalizeNavigationData } from './validation'
 import { mergeNavigationData } from './operations'
 import {
   buildWebsiteRecord,
@@ -203,6 +203,11 @@ export function useNavigationEditor({
   function openImportFile(event) {
     const file = event.target.files?.[0]
     if (!file) return
+    if (file.size > MAX_NAVIGATION_DOCUMENT_BYTES) {
+      onError('导入文件不能超过 5 MB')
+      event.target.value = ''
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       importText.value = String(reader.result || '')

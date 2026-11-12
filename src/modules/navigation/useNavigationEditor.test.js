@@ -106,6 +106,23 @@ describe('useNavigationEditor', () => {
     expect(state.selectedCategory.value).toBe('all')
   })
 
+
+  it('rejects oversized import files before reading them into memory', () => {
+    const state = createState()
+    const event = {
+      target: {
+        files: [{ size: 5 * 1024 * 1024 + 1 }],
+        value: 'oversized.json',
+      },
+    }
+
+    state.editor.openImportFile(event)
+
+    expect(event.target.value).toBe('')
+    expect(state.editor.showImport.value).toBe(false)
+    expect(state.onError).toHaveBeenCalledWith('导入文件不能超过 5 MB')
+  })
+
   it('does not delete the last remaining category', async () => {
     const state = createState({ categories: [category] })
     await state.editor.removeCategory(category)

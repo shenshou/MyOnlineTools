@@ -1,6 +1,6 @@
 const MAX_CATEGORIES = 200
 const MAX_WEBSITES = 10000
-const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024
+export const MAX_NAVIGATION_DOCUMENT_BYTES = 5 * 1024 * 1024
 
 function requireString(value, label, maxLength, { optional = false } = {}) {
   if (optional && (value === undefined || value === null || value === '')) return ''
@@ -32,7 +32,7 @@ export function normalizeNavigationData(value) {
   let serialized
   try { serialized = JSON.stringify(value) }
   catch { throw new Error('网址数据无法序列化') }
-  if (serialized && new TextEncoder().encode(serialized).byteLength > MAX_DOCUMENT_BYTES) {
+  if (serialized && new TextEncoder().encode(serialized).byteLength > MAX_NAVIGATION_DOCUMENT_BYTES) {
     throw new Error('网址数据不能超过 5 MB')
   }
   if (!value || typeof value !== 'object' || Array.isArray(value) || value.schemaVersion !== 1) {
