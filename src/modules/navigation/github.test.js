@@ -103,6 +103,7 @@ describe('saveNavigationData', () => {
     const [url, options] = fetch.mock.calls[1]
     expect(url).toContain('/contents/public/data/navigation.json')
     expect(options.method).toBe('PUT')
+    expect(fetch.mock.calls[0][1].cache).toBe('no-store')
     expect(options.headers.Authorization).toBe('Bearer test-token')
     const body = JSON.parse(options.body)
     const decoded = new TextDecoder().decode(Uint8Array.from(
@@ -125,6 +126,20 @@ describe('saveNavigationData', () => {
     await expect(saveNavigationData(baseline, baseline)).rejects.toMatchObject({ status: 409 })
     expect(fetch).toHaveBeenCalledTimes(2)
     expect(fetch.mock.calls[1][1].method).toBe('PUT')
+  })
+
+
+  it('surfaces server write failures without retrying', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        sha: 'remote-file-sha',
+        content: encodeBase64Utf8(baseline),
+      }))
+      .mockResolvedValueOnce(jsonResponse({ message: 'Internal Server Error' }, 500))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(saveNavigationData(baseline, baseline)).rejects.toMatchObject({ status: 500 })
+    expect(fetch).toHaveBeenCalledTimes(2)
   })
 
   it('does not save when the expected baseline is missing or malformed', async () => {

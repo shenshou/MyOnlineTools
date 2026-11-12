@@ -1,4 +1,7 @@
 import { expect, test } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+
+const navigationFixture = JSON.parse(readFileSync(new URL('../public/data/navigation.json', import.meta.url), 'utf8'))
 
 test('JSON tool formats input in the browser', async ({ page }) => {
   await page.goto('/MyOnlineTools/#/tool/json')
@@ -87,4 +90,58 @@ test('invalid navigation import is rejected without closing the import dialog', 
   await page.getByRole('button', { name: '开始导入' }).click()
   await expect(page.locator('.nav-alert-error')).toBeVisible()
   await expect(dialog).toBeVisible()
+})
+
+
+test('GitHub write conflicts preserve staged edits and offer an export', async ({ page }) => {
+  await page.route('https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/public/data/navigation.json**', async route => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(navigationFixture) })
+  })
+  await page.route('https://api.github.com/repos/shenshou/MyOnlineTools', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ full_name: 'shenshou/MyOnlineTools', permissions: { push: true } }),
+    })
+  })
+  await page.route('https://api.github.com/repos/shenshou/MyOnlineTools/contents/public/data/navigation.json**', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          sha: 'fixture-file-sha',
+          content: Buffer.from(JSON.stringify(navigationFixture), 'utf8').toString('base64'),
+          encoding: 'base64',
+        }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 409,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'sha does not match' }),
+    })
+  })
+
+  await page.goto('/MyOnlineTools/#/navigation')
+  await page.getByRole('button', { name: '管理员登录' }).click()
+  await page.getByLabel('Personal Access Token').fill('github_pat_test_conflict')
+  await page.getByRole('button', { name: '验证并登录' }).click()
+  await page.getByLabel('关闭').click()
+
+  await page.getByRole('button', { name: '添加网址' }).click()
+  await page.getByLabel('网站名称 *').fill('Conflict recovery example')
+  await page.getByLabel('网址 *').fill('https://conflict-recovery.example')
+  await page.getByRole('button', { name: '保存更改' }).click()
+  await expect(page.getByText('Conflict recovery example')).toBeVisible()
+
+  await page.getByRole('button', { name: '保存到 GitHub' }).click()
+  await expect(page.getByText(/远端数据已发生变化/)).toBeVisible()
+  await expect(page.getByText('Conflict recovery example')).toBeVisible()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: '导出待保存数据' }).click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toBe('navigation.json')
 })
