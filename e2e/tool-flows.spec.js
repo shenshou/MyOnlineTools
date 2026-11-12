@@ -23,3 +23,32 @@ test('navigation route loads and displays its public data', async ({ page }) => 
   await expect(page.getByRole('heading', { name: '网址导航' })).toBeVisible()
   await expect(page.getByText('B站', { exact: true })).toBeVisible({ timeout: 20000 })
 })
+
+test('guest users are prompted to authorize before adding a website', async ({ page }) => {
+  await page.goto('/MyOnlineTools/#/navigation')
+  await page.getByRole('button', { name: '添加网址' }).click()
+  await expect(page.getByRole('dialog', { name: 'GitHub 管理员授权' })).toBeVisible()
+  await expect(page.getByLabel('Personal Access Token')).toBeVisible()
+})
+
+test('administrator authorization rejects tokens without repository write access', async ({ page }) => {
+  await page.route('https://api.github.com/repos/shenshou/MyOnlineTools', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        full_name: 'shenshou/MyOnlineTools',
+        permissions: { push: false },
+      }),
+    })
+  })
+
+  await page.goto('/MyOnlineTools/#/navigation')
+  await page.getByRole('button', { name: '管理员登录' }).click()
+  await page.getByLabel('Personal Access Token').fill('github_pat_test_without_write_permission')
+  await page.getByRole('button', { name: '验证并登录' }).click()
+
+  await expect(page.getByText('当前 GitHub 账号没有此仓库的写入权限')).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'GitHub 管理员授权' })).toBeVisible()
+  expect(await page.evaluate(() => sessionStorage.getItem('mot-navigation-github-token'))).toBeNull()
+})
