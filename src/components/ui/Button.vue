@@ -36,7 +36,7 @@ defineEmits(['click'])
 .secondary:hover:not(:disabled) { background: var(--surface-hover); }
 .ghost { background: transparent; color: var(--text-secondary); border-color: transparent; }
 .ghost:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
-.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+.danger { background: var(--danger); color: var(--on-primary); border-color: var(--danger); }
 .danger:hover:not(:disabled) { filter: brightness(.94); }
 .block { width: 100%; }
 .loading { cursor: wait; }

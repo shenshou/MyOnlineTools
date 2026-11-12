@@ -36,6 +36,8 @@ jobs:
         run: npm run build
       - name: Check production bundle budgets
         run: npm run check:bundle
+      - name: Check design token usage
+        run: npm run check:tokens
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser end-to-end tests

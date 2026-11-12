@@ -255,7 +255,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .global-search{position:relative;flex:1;max-width:430px;min-width:180px}
 .global-search .header-search{max-width:none;width:100%}
-.global-search-results{position:absolute;top:calc(100% + 9px);left:0;right:0;z-index:60;max-height:min(70vh,520px);overflow:auto;padding:7px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 38px #10132324}
+.global-search-results{position:absolute;top:calc(100% + 9px);left:0;right:0;z-index:60;max-height:min(70vh,520px);overflow:auto;padding:7px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg)}
 .global-search-heading{padding:9px 10px 6px;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.4px}
 .global-search-item{width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;border:0;border-radius:8px;background:transparent;text-align:left;color:var(--text)}
 .global-search-item:hover,.global-search-item.is-active{background:var(--surface-2)}

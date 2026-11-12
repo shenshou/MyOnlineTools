@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check:bundle": "node scripts/check-bundle-size.js"
+    "check:bundle": "node scripts/check-bundle-size.js",
+    "check:tokens": "node scripts/check-design-tokens.js"
   },
   "dependencies": {
     "lucide-vue-next": "^0.468.0",
