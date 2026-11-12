@@ -116,7 +116,7 @@ describe('saveNavigationData', () => {
 
 
   it('accepts line-wrapped base64 content returned by the Contents API', async () => {
-    const wrappedContent = encodeBase64Utf8(baseline).replace(/(.{64})/g, '$1\\n')
+    const wrappedContent = encodeBase64Utf8(baseline).replace(/(.{64})/g, '$1\n')
     const fetch = vi.fn()
       .mockResolvedValueOnce(jsonResponse({
         sha: 'remote-file-sha',

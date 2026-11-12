@@ -79,7 +79,7 @@ export async function verifyAdminToken(token) {
 }
 
 function decodeBase64Utf8(value) {
-  const binary = atob(String(value || '').replace(/\\s/g, ''))
+  const binary = atob(String(value || '').replace(/\s/g, ''))
   const bytes = Uint8Array.from(binary, character => character.charCodeAt(0))
   return new TextDecoder().decode(bytes)
 }

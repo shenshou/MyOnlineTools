@@ -2,7 +2,7 @@ function normalizeEditorUrl(value) {
   const raw = String(value || '').trim()
   if (!raw) throw new Error('请填写网站网址')
   const explicitScheme = raw.match(/^([a-z][a-z0-9+.-]*):/i)?.[1]?.toLowerCase()
-  const hostAndPort = /^[a-z0-9.-]+:\\d+(?:\\/|$)/i.test(raw)
+  const hostAndPort = /^[a-z0-9.-]+:\d+(?:\/|$)/i.test(raw)
   if (explicitScheme && !['http', 'https'].includes(explicitScheme) && !hostAndPort) {
     throw new Error('只支持 HTTP 或 HTTPS 网址')
   }
