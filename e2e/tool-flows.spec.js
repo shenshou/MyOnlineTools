@@ -78,7 +78,7 @@ test('invalid navigation import is rejected without closing the import dialog', 
   await page.getByRole('button', { name: '管理员登录' }).click()
   await page.getByLabel('Personal Access Token').fill('github_pat_test_with_write_permission')
   await page.getByRole('button', { name: '验证并登录' }).click()
-  await page.getByRole('button', { name: '关闭' }).click()
+  await page.getByLabel('关闭').click()
 
   await page.locator('button[title="导入 JSON"]').click()
   const dialog = page.getByRole('dialog', { name: '导入网址数据' })
