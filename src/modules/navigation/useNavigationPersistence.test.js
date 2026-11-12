@@ -54,7 +54,7 @@ describe('useNavigationPersistence', () => {
     const error = Object.assign(new Error('stale'), { code: 'STALE_BASELINE' })
     vi.mocked(saveNavigationData).mockRejectedValue(error)
     const state = setup()
-    const before = structuredClone(state.data.value)
+    const before = JSON.parse(JSON.stringify(state.data.value))
 
     await expect(state.persistence.save()).resolves.toBeNull()
 

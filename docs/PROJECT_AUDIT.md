@@ -1,8 +1,8 @@
 # Project maturity audit
 
 **Audit updated:** 2026-11-12  
-**Reviewed commit:** `f5324d9ba134cea85468aa8f568ef25ffacfc135`  
-**Validation run:** [GitHub Actions run 43186474390](https://github.com/shenshou/MyOnlineTools/actions/runs/43187133112)  
+**Reviewed commit:** `dd623b1584e6da274fe0238fd7a4fb37e7afbf64`  
+**Validation run:** [GitHub Actions run 43186474390](https://github.com/shenshou/MyOnlineTools/actions/runs/43187705215)  
 **Scope:** navigation data security and reliability, shared UI, architecture, automated tests, build pipeline, and performance.
 
 ## Executive summary
@@ -15,7 +15,7 @@ Accessibility work is explicitly deferred in the current execution phase. Existi
 
 | Area | Current baseline |
 | --- | --- |
-| Vitest | 45 tests across 8 files |
+| Vitest | 51 tests across 9 files |
 | Playwright E2E | 8 browser tests |
 | Dependency audit | `npm audit --audit-level=moderate` passes |
 | Production JavaScript | 79.5 KB gzip, 8 chunks |
@@ -69,7 +69,7 @@ Vue 3 + Vite + Vue Router (Hash) + Pinia
 
 1. **Quality audit:** baseline findings documented; automated quality gates expanded.
 2. **Security and data reliability:** token boundary documented, navigation validation and size limit enforced, stale writes protected, and conflict recovery added.
-3. **Automated testing:** 39 Vitest tests and 8 Playwright E2E tests run before deployment.
+3. **Automated testing:** 51 Vitest tests and 8 Playwright E2E tests run before deployment.
 4. **Architecture:** navigation editor operations and data-loading state extracted; remaining view orchestration still needs decomposition.
 5. **UX/UI:** shared component library established; semantic tokens are being migrated incrementally.
 6. **Performance:** route splitting and worker execution retained; bundle budgets and mobile Lighthouse baseline now run in CI.
