@@ -43,6 +43,64 @@
   --overlay-backdrop: rgba(16, 19, 34, .4);
   --modal-backdrop: rgba(17, 24, 39, .6);
 
+
+  /* Hero and brand illustration palette */
+  --hero-gradient-start: #24254c;
+  --hero-gradient-mid: #37356d;
+  --hero-gradient-end: #514ba0;
+  --hero-eyebrow: #c4c1ff;
+  --hero-highlight: #b8b3ff;
+  --hero-copy: #d0d0e5;
+  --hero-search-surface: #ffffff;
+  --hero-search-muted: #8a8da3;
+  --hero-search-text: #25283b;
+  --hero-search-kbd: #777b90;
+  --hero-search-kbd-line: #e8e9f0;
+  --hero-meta: #c4c5dd;
+  --hero-status: #7ce2b3;
+  --hero-orb-line: rgba(255, 255, 255, .09);
+  --hero-orb-ring: rgba(255, 255, 255, .03);
+  --hero-orb-ring-soft: rgba(255, 255, 255, .02);
+  --hero-orb-fill: rgba(139, 131, 239, .13);
+  --hero-card-surface: rgba(255, 255, 255, .93);
+  --hero-card-text: #35375a;
+  --hero-card-line: rgba(255, 255, 255, .5);
+  --hero-card-accent: #7b75dc;
+  --hero-card-purple: #8d82ef;
+  --hero-card-chip: #e8e7ff;
+  --hero-card-chip-text: #6c65d6;
+  --hero-shadow: rgba(23, 24, 61, .2);
+  --hero-card-shadow: 0 14px 35px rgba(23, 24, 61, .2);
+
+  /* Tool category accents */
+  --tool-violet-bg: #efedff;
+  --tool-violet-text: #6a61dc;
+  --tool-blue-bg: #eaf1ff;
+  --tool-blue-text: #4d79d9;
+  --tool-cyan-bg: #e6f8fa;
+  --tool-cyan-text: #2598a6;
+  --tool-orange-bg: #fff2e6;
+  --tool-orange-text: #e28b43;
+  --tool-pink-bg: #ffedf4;
+  --tool-pink-text: #d86e9a;
+  --tool-green-bg: #e8f7ef;
+  --tool-green-text: #42a879;
+
+  /* Interaction and supporting accents */
+  --border-hover: #c9c6f7;
+  --shadow-card-hover: 0 12px 28px rgba(51, 48, 94, .05);
+  --icon-muted: #c1c4d2;
+  --favorite: #e4a43c;
+  --favorite-strong: #d49a34;
+  --favorite-border: #f1dcae;
+  --text-separator: #c3c6d2;
+  --focus-border: #a9a4ef;
+  --placeholder-text: #b6bac9;
+  --placeholder-icon: #aaa5ec;
+  --primary-shadow: rgba(99, 91, 219, .17);
+  --mobile-backdrop: rgba(16, 19, 34, .4);
+  --mobile-sidebar-shadow: 0 12px 35px rgba(0, 0, 0, .125);
+
   /* Existing compatibility aliases */
   --shadow: 0 8px 28px rgba(31, 38, 75, .045);
 
@@ -116,4 +174,32 @@
   --shadow-md: 0 8px 28px rgba(0, 0, 0, .2);
   --shadow-lg: 0 14px 35px rgba(0, 0, 0, .28);
   --focus-ring: 0 0 0 3px rgba(147, 139, 255, .24);
+
+  /* Keep the illustrated hero intentionally high-contrast in dark mode. */
+  --tool-violet-bg: #302d50;
+  --tool-violet-text: #b7b1ff;
+  --tool-blue-bg: #243653;
+  --tool-blue-text: #a6c1ff;
+  --tool-cyan-bg: #1e3d43;
+  --tool-cyan-text: #82d5df;
+  --tool-orange-bg: #493324;
+  --tool-orange-text: #f0b77d;
+  --tool-pink-bg: #472d3b;
+  --tool-pink-text: #f0a5c3;
+  --tool-green-bg: #1f3c31;
+  --tool-green-text: #83d4aa;
+  --border-hover: #514b80;
+  --shadow-card-hover: 0 12px 28px rgba(0, 0, 0, .22);
+  --icon-muted: #69718a;
+  --favorite: #e8b65f;
+  --favorite-strong: #e8b65f;
+  --favorite-border: #66502e;
+  --text-separator: #68718a;
+  --focus-border: #8178ef;
+  --placeholder-text: #737b91;
+  --placeholder-icon: #938bff;
+  --primary-shadow: rgba(147, 139, 255, .2);
+  --mobile-backdrop: rgba(0, 0, 0, .4);
+  --mobile-sidebar-shadow: 0 12px 35px rgba(0, 0, 0, .4);
+
 }
