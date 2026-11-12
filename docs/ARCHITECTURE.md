@@ -36,6 +36,7 @@ main.js
 | `src/modules/navigation/useNavigationData.js` | Remote load, normalized baseline, dirty state, and session-cache fallback |
 | `src/modules/navigation/useNavigationAdmin.js` | Administrator login, session restoration, and logout state |
 | `src/modules/navigation/useNavigationPersistence.js` | Validated save orchestration, conflict classification, and recovery messaging |
+| `src/modules/navigation/useNavigationPersistence.js` | Validated save orchestration, conflict classification, and recovery messaging |
 | `src/modules/navigation/editor.js` | Pure website and category editing operations |
 | `src/modules/navigation/operations.js` | Import merge and deduplication rules |
 | `src/modules/navigation/github.js` | GitHub token session, validated data reads/writes, stale-write protection |
@@ -72,6 +73,10 @@ The canonical data file is `public/data/navigation.json`. It uses `schemaVersion
 - Vitest: `npm test` for tool logic, navigation validation, editor operations, GitHub persistence behavior, and shared component behavior.
 - Playwright: `npm run test:e2e` for browser-level JSON, regex-worker, and navigation smoke flows. Install Chromium first with `npx playwright install chromium`.
 - GitHub Actions runs both suites against the production preview before deployment.
+
+## Design system
+
+`src/styles/tokens.css` is the source of theme-aware semantic colors, overlay colors, typography, spacing, radius, elevation, interaction, and z-index tokens. Shared components and migrated page surfaces should consume these values instead of adding new literal palettes. The migration remains incremental; intentional brand illustration colors are not mechanically replaced.
 
 ## Performance budgets
 

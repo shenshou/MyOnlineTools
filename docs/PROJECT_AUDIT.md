@@ -41,7 +41,7 @@ Lighthouse results are lab measurements from a GitHub-hosted runner and should b
 | AUD-07 | Medium | CI had broader write permissions and silently synchronized the lockfile. | **Resolved:** CI now uses `npm ci`; build job is read-only and deploy job receives only Pages/id-token permissions. |
 | AUD-08 | Medium | Bundle growth was not guarded. | **Resolved:** CI enforces 200 KB total JS gzip, 100 KB largest JS chunk, and 40 KB CSS gzip budgets. |
 | AUD-09 | Medium | Browser performance had no repeatable baseline. | **Resolved:** mobile Lighthouse Performance audit runs in CI and uploads its JSON report. |
-| AUD-10 | Low | Design tokens coexisted with legacy literal styles. | **Partially resolved:** semantic overlays, alerts, status colors, and shared surfaces migrated; more legacy styles remain. |
+| AUD-10 | Low | Design tokens coexisted with legacy literal styles. | **Partially resolved:** semantic overlays, alerts, status colors, shared surfaces, and common radii migrated; more legacy brand colors remain. |
 | AUD-11 | Low | The navigation view remains a large file. | **Open:** continue extracting authentication/save orchestration and presentation subcomponents when this reduces coupling. |
 | AUD-12 | Low | Accessibility has not received a complete manual audit. | **Deferred by project decision:** do not include accessibility remediation in the current phase. |
 
