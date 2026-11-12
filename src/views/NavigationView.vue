@@ -12,6 +12,7 @@ import { useNavigationFilters } from '../modules/navigation/useNavigationFilters
 import WebsiteFavicon from '../modules/navigation/components/WebsiteFavicon.vue'
 import NavigationDetailsDrawer from '../modules/navigation/components/NavigationDetailsDrawer.vue'
 import { mergeNavigationData } from '../modules/navigation/operations'
+import { buildWebsiteRecord, createCategory, renameCategory as renameCategoryData, removeCategory as removeCategoryData } from '../modules/navigation/editor'
 import { useToast } from '../composables/useToast'
 import { useConfirm } from '../composables/useConfirm'
 import { Button, Input, Textarea, Select, EmptyState, Loading, Modal } from '../components/ui'
@@ -67,13 +68,6 @@ function snapshot() { return JSON.stringify(data.value) }
 const dirty = computed(() => snapshot() !== baseline.value)
 const { categoryCounts, allTags, filtered } = useNavigationFilters({ data, search, selectedCategory, selectedTag, favoritesOnly, sortMode })
 function domainOf(url) { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return '' } }
-function normalizeUrl(value) {
-  const raw = value.trim()
-  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
-  const parsed = new URL(withProtocol)
-  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('只支持 HTTP 或 HTTPS 网址')
-  return parsed.href
-}
 function setView(mode) { if (!['card', 'list'].includes(mode)) return; viewMode.value = mode; writePreference('mot-navigation-view', mode) }
 function setSort(mode) { if (!['custom', 'newest', 'updated', 'name-asc', 'name-desc'].includes(mode)) return; sortMode.value = mode; writePreference('mot-navigation-sort', mode) }
 function markMessage(text) { message.value = text; errorMessage.value = '' }
@@ -145,23 +139,10 @@ function openEdit(item) {
 async function saveForm() {
   if (!admin.value) { showAdmin.value = true; return }
   try {
-    const name = form.value.name.trim()
-    if (!name) throw new Error('请填写网站名称')
-    const url = normalizeUrl(form.value.url)
-    const duplicate = data.value.websites.find(w => w.url.toLowerCase() === url.toLowerCase() && w.id !== editingId.value)
-    if (duplicate) { const ok = await confirm({ title: '网址可能重复', message: `该网址已存在：${duplicate.name}。仍然保存吗？` }); if (!ok) return }
-    const now = Date.now()
-    const tags = [...new Set(form.value.tagsText.split(/[,，]/).map(t => t.trim()).filter(Boolean))]
-    if (editingId.value) {
-      const index = data.value.websites.findIndex(w => w.id === editingId.value)
-      data.value.websites[index] = { ...data.value.websites[index], name, url, favicon: form.value.favicon.trim(), description: form.value.description.trim(), notes: form.value.notes.trim(), categoryId: form.value.categoryId, tags, favorite: Boolean(form.value.favorite), updatedAt: now }
-    } else {
-      data.value.websites.push({
-        id: crypto.randomUUID(), name, url, favicon: form.value.favicon.trim(), description: form.value.description.trim(),
-        notes: form.value.notes.trim(), categoryId: form.value.categoryId, tags, favorite: Boolean(form.value.favorite),
-        sortOrder: Math.max(0, ...data.value.websites.map(w => w.sortOrder || 0)) + 1, createdAt: now, updatedAt: now,
-      })
-    }
+    const record = buildWebsiteRecord(form.value, data.value.websites, editingId.value, Date.now(), crypto.randomUUID())
+    const index = data.value.websites.findIndex(website => website.id === record.id)
+    if (index >= 0) data.value.websites[index] = record
+    else data.value.websites.push(record)
     showForm.value = false
     markMessage('更改已暂存在当前页面，请点击「保存到 GitHub」同步。')
   } catch (error) { markError(error.message || '请检查输入内容') }
@@ -271,19 +252,19 @@ function exportData() {
 }
 function addCategory() {
   if (!admin.value) { showAdmin.value = true; return }
-  const name = newCategory.value.trim()
-  if (!name) return
-  if (data.value.categories.some(c => c.name === name)) { markError('分类名称已存在'); return }
-  data.value.categories.push({ id: `custom-${crypto.randomUUID()}`, name, icon: 'folder', sortOrder: data.value.categories.length + 1 })
-  newCategory.value = ''
+  try {
+    data.value.categories = createCategory(data.value.categories, newCategory.value, `custom-${crypto.randomUUID()}`)
+    newCategory.value = ''
+    markMessage('分类已添加，尚未同步到 GitHub。')
+  } catch (error) { markError(error.message) }
 }
 function renameCategory(category) {
   if (!admin.value) { showAdmin.value = true; return }
-  const name = categoryEdit.value?.name?.trim()
-  if (!name) return
-  if (data.value.categories.some(c => c.id !== category.id && c.name === name)) { markError('分类名称已存在'); return }
-  category.name = name
-  categoryEdit.value = null
+  try {
+    data.value.categories = renameCategoryData(data.value.categories, category.id, categoryEdit.value?.name)
+    categoryEdit.value = null
+    markMessage('分类名称已修改，尚未同步到 GitHub。')
+  } catch (error) { markError(error.message) }
 }
 async function removeCategory(category) {
   if (!admin.value) { showAdmin.value = true; return }
@@ -291,9 +272,11 @@ async function removeCategory(category) {
   const target = data.value.categories.find(c => c.id !== category.id)
   const ok = await confirm({ title: '删除分类', message: `删除「${category.name}」并将其中网址移动到「${target.name}」？`, confirmText: '删除分类', tone: 'danger' })
   if (!ok) return
-  data.value.websites.forEach(w => { if (w.categoryId === category.id) w.categoryId = target.id })
-  data.value.categories = data.value.categories.filter(c => c.id !== category.id)
-  if (selectedCategory.value === category.id) selectedCategory.value = 'all'
+  try {
+    data.value = removeCategoryData(data.value, category.id)
+    if (selectedCategory.value === category.id) selectedCategory.value = 'all'
+    markMessage('分类已删除，相关网址已移动到其他分类，尚未同步到 GitHub。')
+  } catch (error) { markError(error.message) }
 }
 function openImportFile(event) {
   const file = event.target.files?.[0]
