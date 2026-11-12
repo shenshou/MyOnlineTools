@@ -62,6 +62,9 @@ async function api(path, options = {}, token = accessToken) {
   if (!response.ok) {
     const error = new Error(body.message || `GitHub API 请求失败（${response.status}）`)
     error.status = response.status
+    if ([409, 422].includes(response.status) && /sha|reference|conflict/i.test(body.message || '')) {
+      error.code = 'WRITE_CONFLICT'
+    }
     throw error
   }
   return body
@@ -115,7 +118,7 @@ export async function saveNavigationData(data, expectedBaseline) {
   }
 
   const path = `/repos/${OWNER}/${REPO}/contents/${DATA_PATH}`
-  const current = await api(`${path}?ref=${BRANCH}`)
+  const current = await api(`${path}?ref=${BRANCH}`, { cache: 'no-store' })
   let remoteData
   try {
     remoteData = normalizeNavigationData(JSON.parse(decodeBase64Utf8(current.content)))

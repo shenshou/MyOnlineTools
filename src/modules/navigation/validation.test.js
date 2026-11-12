@@ -69,6 +69,12 @@ describe('normalizeNavigationData', () => {
     expect(() => normalizeNavigationData(oversized)).toThrow('不能超过 5000')
   })
 
+  it('rejects oversized navigation documents before processing records', () => {
+    const oversized = validData()
+    oversized.websites[0].notes = 'x'.repeat(5 * 1024 * 1024 + 1)
+    expect(() => normalizeNavigationData(oversized)).toThrow('不能超过 5 MB')
+  })
+
   it('reports invalid data without throwing from the predicate', () => {
     expect(isValidNavigationData(validData())).toBe(true)
     expect(isValidNavigationData({ schemaVersion: 1, categories: [], websites: [] })).toBe(false)

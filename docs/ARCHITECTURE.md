@@ -13,6 +13,8 @@ main.js
     │       └── workers/regex.worker.js
     └── NavigationView.vue
         ├── modules/navigation/useNavigationFilters.js
+        ├── modules/navigation/editor.js
+        ├── modules/navigation/operations.js
         ├── modules/navigation/validation.js
         └── modules/navigation/github.js
             └── GitHub Contents API
@@ -29,7 +31,9 @@ main.js
 | `src/stores/preferences.js` | Theme, favorites, and recent tools |
 | `src/modules/navigation/validation.js` | Navigation JSON schema validation and normalization |
 | `src/modules/navigation/useNavigationFilters.js` | Category counts, tags, filtering, and sorting |
-| `src/modules/navigation/github.js` | GitHub token session, data reads, stale-write protection |
+| `src/modules/navigation/editor.js` | Pure website and category editing operations |
+| `src/modules/navigation/operations.js` | Import merge and deduplication rules |
+| `src/modules/navigation/github.js` | GitHub token session, validated data reads/writes, stale-write protection |
 | `src/components/ui/` | Shared UI primitives |
 | `src/composables/` | Cross-page toast and confirmation behavior |
 
@@ -38,9 +42,9 @@ main.js
 1. Load the public JSON (or authenticated latest content) and normalize it.
 2. Keep a snapshot of the loaded document as the page's baseline.
 3. Stage edits in page memory; do not write after every form change.
-4. On save, fetch the latest remote file and compare it with the baseline.
+4. Validate the outgoing document and baseline, then fetch the latest remote file without using a browser cache and compare it with the baseline.
 5. If the remote document differs, cancel and ask the administrator to reload and reapply changes.
-6. If it matches, write using the same response's Git blob SHA. A later concurrent update causes GitHub to reject the write.
+6. If it matches, write using the same response's Git blob SHA. A later concurrent update causes GitHub to reject the write. The UI preserves the staged edits and offers an export before the administrator reloads and reapplies them.
 
 This is optimistic concurrency control, not an automatic merge system.
 
@@ -60,7 +64,7 @@ The canonical data file is `public/data/navigation.json`. It uses `schemaVersion
 
 ## Automated tests
 
-- Vitest: `npm test` for tool logic, navigation validation, and shared component behavior.
+- Vitest: `npm test` for tool logic, navigation validation, editor operations, GitHub persistence behavior, and shared component behavior.
 - Playwright: `npm run test:e2e` for browser-level JSON, regex-worker, and navigation smoke flows. Install Chromium first with `npx playwright install chromium`.
 - GitHub Actions runs both suites against the production preview before deployment.
 
