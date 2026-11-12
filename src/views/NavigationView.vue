@@ -14,10 +14,12 @@ import { useNavigationAdmin } from '../modules/navigation/useNavigationAdmin'
 import { useNavigationPersistence } from '../modules/navigation/useNavigationPersistence'
 import { useNavigationEditor } from '../modules/navigation/useNavigationEditor'
 import { useToast } from '../composables/useToast'
+import { useConfirm } from '../composables/useConfirm'
 import { Button, Input, Textarea, Select, EmptyState, Loading, Modal } from '../components/ui'
 
 const route = useRoute()
 const { showToast } = useToast()
+const { confirm } = useConfirm()
 const sortOptions = [{value:'custom',label:'自定义排序'},{value:'newest',label:'最近添加'},{value:'updated',label:'最近更新'},{value:'name-asc',label:'名称升序'},{value:'name-desc',label:'名称降序'}]
 const categoryIconOptions = [{value:'bot',label:'🤖 AI'},{value:'code',label:'💻 开发'},{value:'palette',label:'🎨 设计'},{value:'clapperboard',label:'🎬 娱乐'},{value:'download',label:'⬇️ 下载'},{value:'graduation-cap',label:'🎓 学习'},{value:'globe',label:'🌐 实用'},{value:'folder',label:'📁 文件夹'}]
 const { data, baseline, loading, loadError, dirty, snapshot, loadData } = useNavigationData()
@@ -94,10 +96,7 @@ const {
   showAdmin,
   selectedCategory,
   selectedWebsite,
-  confirm: async options => {
-    const { confirm } = useConfirm()
-    return confirm(options)
-  },
+  confirm,
   onMessage: markMessage,
   onError: markError,
 })
