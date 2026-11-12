@@ -45,7 +45,7 @@ MyOnlineTools 收集并整合常用的小型在线工具，重点关注使用效
 
 通过左侧「资源管理」中的「网址导航」进入，可以添加和整理网站。页面支持卡片/列表切换、分类与标签筛选、全文搜索、收藏、详情抽屉、JSON 合并/覆盖导入和导出。
 
-网址数据存放于 `public/data/navigation.json`，公开读取；只有拥有仓库写入权限并提供有效 Fine-grained Personal Access Token 的管理员才能保存修改。建议创建仅授权 `shenshou/MyOnlineTools` 仓库、且 `Contents` 权限为 `Read and write` 的令牌。令牌保存在当前标签页的 `sessionStorage` 中，刷新页面后仍保持授权，关闭标签页后会话结束。每次点击「保存到 GitHub」统一提交当前所有修改；单纯更新网址 JSON 不会触发 Pages 重新构建。
+网址数据存放于 `public/data/navigation.json`，公开读取；只有拥有仓库写入权限并提供有效 Fine-grained Personal Access Token 的管理员才能保存修改。建议创建仅授权 `shenshou/MyOnlineTools` 仓库、且 `Contents` 权限为 `Read and write` 的令牌。令牌保存在当前标签页的 `sessionStorage` 中，刷新页面后仍保持授权，关闭标签页或主动退出后会话结束。浏览器端令牌仍可能被同源脚本读取，请勿在不可信设备上使用管理员模式。每次点击「保存到 GitHub」统一提交当前所有修改；单纯更新网址 JSON 不会触发 Pages 重新构建。
 
 ## 使用说明
 
@@ -89,6 +89,13 @@ MyOnlineTools 收集并整合常用的小型在线工具，重点关注使用效
 
 页面优先复用共享控件；复杂编辑器等具有专用交互的区域仍保留原生控件和独立样式。
 
+## 质量保障与测试
+
+- 使用 Vitest 运行单元测试和共享组件测试。
+- GitHub Actions 在部署前执行锁文件同步、依赖安全审计、测试和生产构建。
+- 当前测试覆盖工具处理逻辑、导航数据校验和 Tabs 键盘交互；尚未建立完整浏览器 E2E 测试。
+- 安全模型、Token 使用边界和数据恢复方式见 [安全说明](docs/SECURITY.md)；模块职责与扩展方式见 [架构说明](docs/ARCHITECTURE.md)。
+
 ## 本地运行
 
 ### 环境要求
@@ -101,7 +108,7 @@ MyOnlineTools 收集并整合常用的小型在线工具，重点关注使用效
 ```bash
 git clone https://github.com/shenshou/MyOnlineTools.git
 cd MyOnlineTools
-npm install
+npm ci
 ```
 
 ### 启动开发服务器
@@ -120,6 +127,12 @@ npm run build
 
 构建产物会输出到 `dist/` 目录。
 
+### 运行测试
+
+```bash
+npm test
+```
+
 ### 本地预览生产构建
 
 ```bash
@@ -130,6 +143,7 @@ npm run preview
 
 ```text
 MyOnlineTools/
+├── docs/                    # 安全、架构与审计文档
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml       # GitHub Pages 自动部署工作流
@@ -146,11 +160,12 @@ MyOnlineTools/
 │   ├── data/
 │   │   └── tools.js         # 工具清单、分类与元数据
 │   ├── modules/
-│   │   └── navigation/      # 网址导航数据与 GitHub API 服务
+│   │   └── navigation/      # 网址导航校验、筛选与 GitHub API 服务
 │   ├── router/
 │   │   └── index.js         # Hash 路由配置
 │   ├── stores/
 │   │   └── preferences.js   # 收藏、最近使用等本地偏好
+│   ├── workers/             # 隔离耗时任务（如正则匹配）
 │   ├── utils/
 │   │   └── toolActions.js   # 各工具的核心处理逻辑
 │   ├── views/
@@ -162,6 +177,7 @@ MyOnlineTools/
 │   └── style.css
 ├── index.html
 ├── package.json
+├── package-lock.json        # 可重复安装的依赖锁文件
 └── vite.config.js
 ```
 
@@ -171,6 +187,7 @@ MyOnlineTools/
 
 - 部署工作流：`.github/workflows/deploy.yml`
 - 触发条件：向 `main` 分支推送代码，或在 GitHub Actions 页面手动运行工作流。
+- 工作流先同步依赖锁文件，再使用 `npm ci` 安装锁定依赖；执行 `npm test`、`npm audit --audit-level=moderate` 和 `npm run build` 后部署。
 - 例外：仅修改 `public/data/navigation.json` 时不会触发 Pages 构建；导航页面直接从 GitHub 仓库读取最新 JSON。
 - 构建命令：`npm install`、`npm run build`
 - 发布目录：`dist/`

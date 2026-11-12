@@ -1,74 +1,59 @@
 # Project Maturity Audit
 
-**Audit baseline:** `cc88b3fc768b38f8e542debc9a351fb62e37953f`  
-**Scope:** repository structure, application flows, navigation data persistence, tool execution, shared UI primitives, and GitHub Pages workflow.  
-**Status:** static source review. Runtime/browser behavior and dependency vulnerability status still require automated checks.
+**Audit baseline:** `cc88b3fc768b38f8e542debc9a351fb62e37953f` (initial static review)  
+**Current implementation reviewed through:** `2ffbdb0de02b0fbd26362aaccc6d6f0ce68c834b` plus the active CI workflow changes.  
+**Scope:** repository structure, navigation persistence, tool execution, shared UI, dependency graph, and GitHub Pages pipeline.
 
 ## Executive summary
 
-The project has a clear, lightweight Vue 3 architecture and a useful separation between tools, navigation, shared UI, and preferences. The main maturity gap is not feature coverage; it is the absence of repeatable quality gates and a few data-integrity and resilience weaknesses around browser storage and repository writes.
+The project now has an initial quality and security foundation: navigation validation and stale-write protection, isolated regex execution, browser-storage recovery, a Vitest suite, component interaction tests, lazy-loaded routes, a committed npm lockfile, and CI dependency auditing. The remaining work is primarily deeper browser E2E coverage, broader accessibility review, and continued decomposition of the large navigation view.
 
-No server-side application or private backend is present. The navigation dataset is intentionally public, while administrative writes use a user-supplied GitHub token from the browser.
+## Findings and status
 
-## Confirmed findings
-
-| ID | Priority | Area | Finding | Impact |
-| --- | --- | --- | --- | --- |
-| AUD-01 | High | Navigation persistence | Save reads the current file SHA immediately before writing, but does not compare the fetched remote document with the user's loaded baseline. A stale tab can therefore submit an older full document using the newest SHA and overwrite changes made by another tab before the save began. | Lost updates despite the SHA-based Contents API write. |
-| AUD-02 | High | Input resilience | `preferences.js` parses localStorage JSON during store initialization without recovery. Malformed or manually edited storage can throw during app startup. | Application startup failure for affected browser profiles. |
-| AUD-03 | High | Import validation | Navigation import checks only the top-level arrays and a few website fields. It does not validate category records, URL protocols, field types, IDs, category references, timestamps, or duplicate IDs/URLs comprehensively. | Malformed data can enter the editor and later break rendering or overwrite the public dataset. |
-| AUD-04 | Medium | Navigation import | Merge import builds its URL map once and does not add newly imported records to the map. Duplicate URLs within a single import file can therefore be inserted more than once. | Duplicate navigation entries. |
-| AUD-05 | Medium | Tool execution | Regex execution runs synchronously on the main thread with unbounded pattern and input sizes. Pathological regular expressions can block the page. | Browser tab becomes unresponsive until execution returns or the tab is closed. |
-| AUD-06 | Medium | Shared Modal | Modal focus handling queries the document-wide first `[data-modal]` element rather than its own panel. Multiple simultaneously mounted dialogs can target the wrong panel; the focusable selector also omits some valid controls such as buttons with certain custom tabindex behavior. | Fragile keyboard and focus behavior as dialogs evolve. |
-| AUD-07 | Medium | Browser storage | Navigation view mode/sort and the administrator token access sessionStorage/localStorage without consistently guarding storage access failures. | Restricted browser contexts can fail during module/component initialization or preference updates. |
-| AUD-08 | Medium | CI | Workflow installs with `npm install`, while the repository has no package lock file. Dependency resolution is not pinned to a reproducible dependency graph. | Builds may change over time without source changes. |
-| AUD-09 | Medium | CI | The only configured project script is build; no unit/component/E2E test or lint script is present. | Regressions can pass CI as long as the bundle compiles. |
-| AUD-10 | Low | UI consistency | Global CSS still contains extensive literal colors and legacy styles alongside semantic tokens. | Theme and visual changes require more manual coordination. |
-| AUD-11 | Low | Accessibility | The global search result list is rendered as a visual dropdown but does not expose a complete combobox/listbox keyboard interaction model. | Keyboard and assistive-technology navigation is weaker than expected. |
-| AUD-12 | Low | External requests | Google Fonts and Google favicon fallback introduce third-party requests. | External dependency, privacy, and availability considerations should be documented and optionally made configurable. |
-
-## Positive findings
-
-- Vue template interpolation is used for user-controlled website names, descriptions, notes, and tool output; no `v-html` usage was found in the reviewed application views.
-- Website navigation accepts only HTTP and HTTPS schemes through URL normalization before adding/editing records.
-- External website opening uses `noopener,noreferrer`.
-- The GitHub Contents API write includes the current blob SHA, so writes racing after the initial SHA read are rejected by GitHub rather than silently accepted.
-- The administrator token is stored in sessionStorage rather than committed to the repository or persisted in localStorage. This limits persistence but does not protect it from same-origin script execution.
-- Navigation JSON is public by design; the GitHub token is not part of the public JSON dataset.
-- The current deployment workflow uses least-privilege job permissions for Pages deployment and serializes deployments with a concurrency group.
+| ID | Priority | Finding | Status |
+| --- | --- | --- | --- |
+| AUD-01 | High | A stale tab could overwrite a newer navigation document if it fetched the newest SHA only at save time. | **Resolved:** compare latest remote JSON to the loaded baseline, then write with that same response's SHA. |
+| AUD-02 | High | Malformed localStorage JSON could crash preference-store initialization. | **Resolved:** guarded parsing, type validation, and safe writes. |
+| AUD-03 | High | Navigation imports had shallow validation. | **Resolved:** centralized schema validation, URL protocol/credential checks, field limits, and uniqueness/reference checks. |
+| AUD-04 | Medium | Merge import did not register inserted URLs in its lookup map. | **Resolved:** imported documents are normalized and duplicate URLs rejected; merge lookup is updated as entries are inserted. |
+| AUD-05 | Medium | Regex matching ran synchronously on the main thread without input bounds. | **Resolved:** dedicated worker, 200-character pattern limit, 20,000-character input limit, and 500 ms timeout. |
+| AUD-06 | Medium | Modal focus handling queried the first document-wide modal. | **Resolved:** each modal owns its panel reference and focus trap. |
+| AUD-07 | Medium | Browser storage access was not consistently guarded. | **Resolved:** safe reads/writes for preferences, navigation view preferences, and token session access. |
+| AUD-08 | Medium | No committed dependency lockfile; installs were not reproducible. | **Resolved:** package-lock is committed and CI uses `npm ci`; a dedicated job synchronizes the lockfile without running dependency lifecycle scripts. |
+| AUD-09 | Medium | No automated tests or CI test gate. | **Partially resolved:** 19 unit/component tests run in CI; browser E2E coverage remains outstanding. |
+| AUD-10 | Low | Global CSS still contains legacy literal colors alongside semantic tokens. | **Open:** avoid a risky whole-site CSS rewrite; migrate incrementally. |
+| AUD-11 | Low | Global search lacked complete keyboard and ARIA semantics. | **Partially resolved:** combobox/listbox semantics and arrow/Enter interaction added; full screen-reader testing remains outstanding. |
+| AUD-12 | Low | Third-party font and favicon requests. | **Partially resolved:** blocking Google Fonts import removed; favicon fallback can still contact Google and destination sites. |
 
 ## Architecture baseline
 
 ```text
 Vue 3 + Vite + Vue Router (Hash) + Pinia
 ├── App.vue                 application shell, global search, navigation
-├── views/
-│   ├── HomeView.vue        tool catalog
-│   ├── ToolView.vue        tool input/output UI
-│   └── NavigationView.vue  navigation editor and viewer
+├── views/                  lazy-loaded page views
 ├── data/tools.js           tool metadata
 ├── utils/toolActions.js    tool execution logic
+├── workers/                isolated regex execution
 ├── modules/navigation/
 │   ├── github.js           GitHub Contents API and token session
-│   ├── defaultData.js      initial navigation data
-│   └── components/         navigation-specific UI
-├── stores/preferences.js   favorites, recent tools, theme
+│   ├── validation.js       navigation data validation
+│   └── useNavigationFilters.js
+├── stores/preferences.js  browser preferences
 ├── components/ui/          shared UI primitives
-├── composables/            toast and confirmation state
 └── styles/                 design tokens + global CSS
 ```
 
-## Eight-stage execution plan
+## Eight-stage execution record
 
-1. **Quality audit** — establish the baseline and prioritized findings (this document).
-2. **Security and data reliability** — validate navigation records/imports, prevent stale-document overwrites, harden browser storage and token handling, and bound risky tool inputs.
-3. **Automated testing** — add unit tests for pure tool/data logic and wire tests into CI.
-4. **Architecture and maintainability** — split the large navigation view into focused composables/components where doing so reduces coupling without destabilizing behavior.
-5. **UX and accessibility** — improve modal focus ownership, global search keyboard semantics, labels, and responsive interaction.
-6. **Performance** — inspect bundle output, reduce avoidable external requests, and optimize expensive list/search work where measurements justify it.
-7. **Engineering and release** — reproducible dependency installation, CI quality gates, deployment verification, and rollback guidance.
-8. **Documentation and maintenance** — keep architecture, security assumptions, admin setup, data schema, and contribution guidance current.
+1. **Quality audit:** completed; baseline findings recorded.
+2. **Security and data reliability:** core storage, import, token access, regex execution, and navigation write protections implemented.
+3. **Automated testing:** Vitest unit and component tests wired into CI. Current suite: 19 tests across 3 files. Full browser E2E is still a follow-up.
+4. **Architecture and maintainability:** navigation filters extracted; validation and GitHub persistence are separate modules. The main navigation view remains large and should be split incrementally.
+5. **UX and accessibility:** modal focus ownership and global search keyboard interaction improved. Full manual screen-reader and cross-browser accessibility checks remain.
+6. **Performance:** lazy route loading, system font stack, and worker-based regex processing implemented. No formal Lighthouse/Core Web Vitals baseline has been captured.
+7. **Engineering and release:** lockfile, `npm ci`, unit-test gate, dependency audit, build, and Pages deployment pipeline configured.
+8. **Documentation and maintenance:** architecture, security, setup, testing, and recovery guidance added.
 
 ## Validation limits
 
-This audit is based on source inspection at the stated commit. It does not claim browser-based end-to-end verification, cross-browser testing, a completed dependency vulnerability scan, or a performance measurement. Those checks are to be introduced in the later stages.
+CI proves that dependency installation, automated tests, security audit, and production build pass for a commit. It does not replace real browser E2E testing, manual assistive-technology checks, or measured performance testing.
