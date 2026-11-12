@@ -1,23 +1,23 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   Search, Plus, LayoutGrid, List, Star, ExternalLink, Pencil, Trash2, X, Save,
   Download, Upload, LogIn, LogOut, Check, AlertCircle, Globe, ChevronDown, ArrowUpDown,
   Settings, FileJson, RefreshCw, Info, Bookmark, CircleHelp, ArrowUp, ArrowDown
 } from 'lucide-vue-next'
-import { defaultNavigationData } from '../modules/navigation/defaultData'
 import { normalizeNavigationData } from '../modules/navigation/validation'
 import { useNavigationFilters } from '../modules/navigation/useNavigationFilters'
 import WebsiteFavicon from '../modules/navigation/components/WebsiteFavicon.vue'
 import NavigationDetailsDrawer from '../modules/navigation/components/NavigationDetailsDrawer.vue'
 import { mergeNavigationData } from '../modules/navigation/operations'
 import { buildWebsiteRecord, createCategory, renameCategory as renameCategoryData, removeCategory as removeCategoryData } from '../modules/navigation/editor'
+import { useNavigationData } from '../modules/navigation/useNavigationData'
 import { useToast } from '../composables/useToast'
 import { useConfirm } from '../composables/useConfirm'
 import { Button, Input, Textarea, Select, EmptyState, Loading, Modal } from '../components/ui'
 import {
-  setAccessToken, clearAccessToken, verifyAdminToken, restoreAdminSession, saveNavigationData, fetchNavigationData,
+  setAccessToken, clearAccessToken, verifyAdminToken, restoreAdminSession, saveNavigationData,
 } from '../modules/navigation/github'
 
 const route = useRoute()
@@ -25,10 +25,7 @@ const { showToast } = useToast()
 const { confirm } = useConfirm()
 const sortOptions = [{value:'custom',label:'自定义排序'},{value:'newest',label:'最近添加'},{value:'updated',label:'最近更新'},{value:'name-asc',label:'名称升序'},{value:'name-desc',label:'名称降序'}]
 const categoryIconOptions = [{value:'bot',label:'🤖 AI'},{value:'code',label:'💻 开发'},{value:'palette',label:'🎨 设计'},{value:'clapperboard',label:'🎬 娱乐'},{value:'download',label:'⬇️ 下载'},{value:'graduation-cap',label:'🎓 学习'},{value:'globe',label:'🌐 实用'},{value:'folder',label:'📁 文件夹'}]
-const data = ref(structuredClone(defaultNavigationData))
-const baseline = ref('')
-const loading = ref(true)
-const loadError = ref('')
+const { data, baseline, loading, loadError, dirty, snapshot, loadData } = useNavigationData()
 const search = ref('')
 const selectedCategory = ref('all')
 const selectedTag = ref('')
@@ -65,8 +62,6 @@ const categoryEdit = ref(null)
 function emptyForm() {
   return { name: '', url: '', favicon: '', description: '', notes: '', categoryId: 'other', tagsText: '', favorite: false }
 }
-function snapshot() { return JSON.stringify(data.value) }
-const dirty = computed(() => snapshot() !== baseline.value)
 const { categoryCounts, allTags, filtered } = useNavigationFilters({ data, search, selectedCategory, selectedTag, favoritesOnly, sortMode })
 function domainOf(url) { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return '' } }
 function setView(mode) { if (!['card', 'list'].includes(mode)) return; viewMode.value = mode; writePreference('mot-navigation-view', mode) }
@@ -74,42 +69,6 @@ function setSort(mode) { if (!['custom', 'newest', 'updated', 'name-asc', 'name-
 function markMessage(text) { message.value = text; errorMessage.value = ''; saveConflict.value = false }
 function markError(text) { errorMessage.value = text; message.value = ''; saveConflict.value = false }
 
-const NAVIGATION_CACHE_KEY = 'mot-navigation-data-cache'
-
-function isValidNavigationData(value) {
-  try { normalizeNavigationData(value); return true } catch { return false }
-}
-
-async function loadData() {
-  loading.value = true
-  loadError.value = ''
-  try {
-    const remote = await fetchNavigationData()
-    if (!isValidNavigationData(remote)) throw new Error('网址数据格式不正确')
-    data.value = normalizeNavigationData(remote)
-    baseline.value = snapshot()
-    try {
-      const serialized = JSON.stringify(remote)
-      if (sessionStorage.getItem(NAVIGATION_CACHE_KEY) !== serialized) {
-        sessionStorage.setItem(NAVIGATION_CACHE_KEY, serialized)
-      }
-    } catch { /* 缓存空间不足时不影响正常读取 */ }
-  } catch (error) {
-    // 网络或 GitHub 暂时异常时，保留最后一次成功读取的数据，不用空默认数据覆盖页面。
-    try {
-      const cached = JSON.parse(sessionStorage.getItem(NAVIGATION_CACHE_KEY) || 'null')
-      if (isValidNavigationData(cached)) {
-        data.value = normalizeNavigationData(cached)
-        baseline.value = snapshot()
-        loadError.value = `暂时无法读取 GitHub 最新数据，当前显示本标签页上次成功读取的数据。原因：${error.message}`
-      } else {
-        loadError.value = `无法读取 GitHub 网址数据：${error.message}`
-      }
-    } catch {
-      loadError.value = `无法读取 GitHub 网址数据：${error.message}`
-    }
-  } finally { loading.value = false }
-}
 onMounted(async () => {
   await loadData()
   const targetWebsite = data.value.websites.find(website => website.id === route.query.websiteId)
