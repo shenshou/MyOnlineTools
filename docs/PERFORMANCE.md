@@ -8,7 +8,7 @@ The production build is checked in CI after Vite generates `dist/assets`.
 | Largest JavaScript chunk, gzip | 100 KB |
 | Total CSS, gzip | 40 KB |
 
-The budget script measures the generated production assets with Node's built-in gzip implementation. It does not download dependencies or require a browser.
+The budget script measures the generated production assets with Node's built-in gzip implementation. The separate design-token check scans CSS and Vue style blocks. Neither check downloads dependencies or requires a browser.
 
 ## Why these limits
 
@@ -22,18 +22,18 @@ Measured in GitHub Actions on 2026-11-12 (Node 22, Vite production build):
 
 | Metric | Measured | Budget |
 | --- | ---: | ---: |
-| Total JavaScript, gzip | 79.5 KB | 200 KB |
+| Total JavaScript, gzip | 80.6 KB | 200 KB |
 | Largest JavaScript chunk, gzip | 51.6 KB | 100 KB |
-| Total CSS, gzip | 10.3 KB | 40 KB |
+| Total CSS, gzip | 10.9 KB | 40 KB |
 
-The first successful Lighthouse baseline after the overlay-token CSS correction was measured on 2026-11-12:
+The latest measured mobile Lighthouse run after the brand/tool token migration was run on 2026-11-12 (GitHub Actions run 43191218516):
 
 | Metric | Measured |
 | --- | ---: |
 | Mobile Performance score | 99/100 |
-| First Contentful Paint | 1,471 ms |
-| Largest Contentful Paint | 2,127 ms |
-| Total Blocking Time | 39 ms |
+| First Contentful Paint | 1,464 ms |
+| Largest Contentful Paint | 1,657 ms |
+| Total Blocking Time | 22 ms |
 | Cumulative Layout Shift | 0.000 |
 
 These are lab measurements from one GitHub-hosted runner, not guarantees of real-user Core Web Vitals.
@@ -44,7 +44,7 @@ CI runs a mobile Lighthouse audit against the built site served locally by Vite 
 
 The JSON report is uploaded as the `lighthouse-performance-report` workflow artifact. The CI log prints the performance score, FCP, LCP, TBT, and CLS so later runs can be compared under the same GitHub-hosted runner and simulated mobile throttling profile.
 
-The first successful Lighthouse run establishes the initial browser-performance baseline. Lab scores can vary between runner instances, so use the individual metrics and repeated runs rather than treating a single score as a precise user-experience measurement.
+This run establishes the current comparison baseline. Earlier measurements differed, which is expected for lab runs; compare repeated runs and individual metrics rather than treating one score as a precise user-experience measurement. Lab scores can vary between runner instances, so use the individual metrics and repeated runs rather than treating a single score as a precise user-experience measurement.
 
 Run locally:
 

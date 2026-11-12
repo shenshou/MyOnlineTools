@@ -92,8 +92,8 @@ MyOnlineTools 收集并整合常用的小型在线工具，重点关注使用效
 ## 质量保障与测试
 
 - 使用 Vitest 运行单元测试和共享组件测试。
-- GitHub Actions 使用 `npm ci` 安装锁定依赖，并执行单元测试、依赖安全审计、生产构建、构建体积预算、Playwright E2E 和移动端 Lighthouse 性能测量后再部署。
-- 当前包含 59 项 Vitest 单元/组件测试，以及 9 项 Playwright 浏览器 E2E 测试，覆盖工具流程、导航管理、GitHub 授权和保存冲突恢复。
+- GitHub Actions 使用 `npm ci` 安装锁定依赖，并执行单元测试、依赖安全审计、生产构建、构建体积预算、设计令牌检查、Playwright E2E 和移动端 Lighthouse 性能测量后再部署。
+- 当前包含 63 项 Vitest 单元/组件测试，以及 9 项 Playwright 浏览器 E2E 测试，覆盖工具流程、导航管理、GitHub 授权和保存冲突恢复。
 - 安全模型、Token 使用边界和数据恢复方式见 [安全说明](docs/SECURITY.md)；模块职责与扩展方式见 [架构说明](docs/ARCHITECTURE.md)。
 
 ## 性能基线
@@ -149,7 +149,8 @@ npm run preview
 
 ```text
 MyOnlineTools/
-├── docs/                    # 安全、架构与审计文档
+├── docs/                    # 安全、架构、性能与审计文档
+├── scripts/                 # 构建体积与设计令牌检查
 ├── e2e/                     # Playwright 浏览器端到端测试
 ├── .github/
 │   └── workflows/
@@ -197,7 +198,7 @@ MyOnlineTools/
 - 触发条件：向 `main` 分支推送代码，或在 GitHub Actions 页面手动运行工作流。
 - 工作流使用 `npm ci` 安装锁定依赖；执行 `npm test`、`npm audit --audit-level=moderate`、`npm run build`、`npm run check:bundle`、`npm run test:e2e` 和 Lighthouse 移动端性能审计后部署。
 - 例外：仅修改 `public/data/navigation.json` 时不会触发 Pages 构建；导航页面直接从 GitHub 仓库读取最新 JSON。
-- 构建命令：`npm ci`、`npm run build`、`npm run check:bundle`
+- 质量检查：`npm test`、`npm run check:bundle`、`npm run check:tokens`
 - 发布目录：`dist/`
 - Vite 公共基础路径：`/MyOnlineTools/`
 

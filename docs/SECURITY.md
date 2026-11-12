@@ -26,6 +26,7 @@ Use the administrator logout control to clear the token from the current tab. If
 ## Navigation data integrity
 
 - The public JSON is validated and normalized before it is loaded into the editor or accepted from an import.
+- Local JSON files larger than 5 MiB are rejected using the file's byte size before FileReader loads them into memory; pasted JSON is checked by the same UTF-8 byte limit during normalization.
 - The save module independently validates both the outgoing document and the expected baseline before making a write request. This prevents callers outside the editor from bypassing the data schema checks.
 - Navigation documents are limited to 5 MiB measured as UTF-8 bytes to bound import, validation, and API payload costs.
 - Before saving, the application fetches the latest remote JSON with browser caching disabled and compares it with the baseline loaded by the current page.
