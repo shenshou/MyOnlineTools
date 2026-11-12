@@ -155,7 +155,7 @@ onBeforeUnmount(() => {
           <span>My<span class="brand-accent">Online</span>Tools</span>
         </RouterLink>
         <div class="global-search">
-          <form class="header-search" @submit.prevent="search">
+          <form class="header-search" role="search" @submit.prevent="search">
             <Search :size="17"/>
             <input ref="searchInput" v-model="query" role="combobox" aria-label="全局搜索工具和网站" aria-autocomplete="list" aria-controls="global-search-results" :aria-expanded="Boolean(normalizedQuery)" :aria-activedescendant="activeSearchIndex >= 0 ? `global-search-option-${activeSearchIndex}` : undefined" placeholder="全局搜索工具、网站…" autocomplete="off" @keydown="handleSearchKeydown"/>
             <kbd>{{ shortcutLabel }}</kbd>

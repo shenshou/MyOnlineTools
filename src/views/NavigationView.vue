@@ -356,7 +356,7 @@ function iconFor(category) {
 
       <section class="nav-main">
         <div class="nav-toolbar">
-          <label class="nav-search"><Search :size="17"/><input v-model="search" placeholder="搜索名称、网址、简介、备注或标签…"/><kbd>⌘ K</kbd></label>
+          <label class="nav-search"><Search :size="17"/><input v-model="search" aria-label="搜索网址导航" placeholder="搜索名称、网址、简介、备注或标签…"/><kbd>⌘ K</kbd></label>
           <div class="nav-toolbar-actions">
             <Select :model-value="sortMode" :options="sortOptions" aria-label="排序方式" @update:model-value="setSort"/>
             <div class="nav-view-toggle"><button :class="{active:viewMode==='card'}" aria-label="卡片视图" @click="setView('card')"><LayoutGrid :size="16"/></button><button :class="{active:viewMode==='list'}" aria-label="列表视图" @click="setView('list')"><List :size="17"/></button></div>
