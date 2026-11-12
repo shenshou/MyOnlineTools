@@ -13,11 +13,12 @@ import NavigationDetailsDrawer from '../modules/navigation/components/Navigation
 import { mergeNavigationData } from '../modules/navigation/operations'
 import { buildWebsiteRecord, createCategory, renameCategory as renameCategoryData, removeCategory as removeCategoryData } from '../modules/navigation/editor'
 import { useNavigationData } from '../modules/navigation/useNavigationData'
+import { useNavigationAdmin } from '../modules/navigation/useNavigationAdmin'
 import { useToast } from '../composables/useToast'
 import { useConfirm } from '../composables/useConfirm'
 import { Button, Input, Textarea, Select, EmptyState, Loading, Modal } from '../components/ui'
 import {
-  setAccessToken, clearAccessToken, verifyAdminToken, restoreAdminSession, saveNavigationData,
+  saveNavigationData,
 } from '../modules/navigation/github'
 
 const route = useRoute()
@@ -47,12 +48,10 @@ const editingId = ref(null)
 const showAdmin = ref(false)
 const showImport = ref(false)
 const showCategoryManager = ref(false)
-const busy = ref(false)
+const { admin, tokenInput: adminTokenInput, busy, restore: restoreAdminSession, login: authorizeAdmin, logout: clearAdminSession } = useNavigationAdmin()
 const message = ref('')
 const errorMessage = ref('')
 const saveConflict = ref(false)
-const adminTokenInput = ref('')
-const admin = ref(false)
 const form = ref(emptyForm())
 const importText = ref('')
 const importMode = ref('merge')
@@ -75,10 +74,8 @@ onMounted(async () => {
   if (targetWebsite) selectedWebsite.value = targetWebsite
   try {
     const account = await restoreAdminSession()
-    admin.value = Boolean(account)
     if (account) markMessage(`已恢复管理员授权：${account}`)
   } catch {
-    admin.value = false
     markError('保存的 GitHub 授权已失效，请重新登录。')
   }
 })
@@ -168,22 +165,16 @@ async function saveToGitHub() {
 }
 
 async function loginAdmin() {
-  const token = adminTokenInput.value.trim()
-  if (!token) { markError('请填写 Fine-grained Personal Access Token'); return }
-  busy.value = true
+  if (!adminTokenInput.value.trim()) { markError('请填写 Fine-grained Personal Access Token'); return }
   try {
-    const account = await verifyAdminToken(token)
-    setAccessToken(token)
-    admin.value = true
-    adminTokenInput.value = ''
+    const account = await authorizeAdmin()
     markMessage(`已授权：${account}。访问令牌保存在当前标签页会话中，退出管理员模式后会清除。`)
   } catch (error) {
     markError(error.message || 'GitHub 授权失败')
-  } finally { busy.value = false }
+  }
 }
 function logout() {
-  clearAccessToken()
-  admin.value = false
+  clearAdminSession()
   showAdmin.value = false
   markMessage('已退出管理员模式。')
 }

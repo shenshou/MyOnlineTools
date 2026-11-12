@@ -93,7 +93,7 @@ MyOnlineTools 收集并整合常用的小型在线工具，重点关注使用效
 
 - 使用 Vitest 运行单元测试和共享组件测试。
 - GitHub Actions 使用 `npm ci` 安装锁定依赖，并执行单元测试、依赖安全审计、生产构建、构建体积预算、Playwright E2E 和移动端 Lighthouse 性能测量后再部署。
-- 当前包含 39 项 Vitest 单元/组件测试，以及 8 项 Playwright 浏览器 E2E 测试，覆盖工具流程、导航管理、GitHub 授权和保存冲突恢复。
+- 当前包含 45 项 Vitest 单元/组件测试，以及 8 项 Playwright 浏览器 E2E 测试，覆盖工具流程、导航管理、GitHub 授权和保存冲突恢复。
 - 安全模型、Token 使用边界和数据恢复方式见 [安全说明](docs/SECURITY.md)；模块职责与扩展方式见 [架构说明](docs/ARCHITECTURE.md)。
 
 ## 性能基线\n\nCI 会检查 JavaScript/CSS gzip 体积预算，并生成移动端 Lighthouse Performance 报告。当前首次正式基线为 99/100，详细指标见 [性能说明](docs/PERFORMANCE.md)。\n\n## 本地运行

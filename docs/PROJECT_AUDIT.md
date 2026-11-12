@@ -1,8 +1,8 @@
 # Project maturity audit
 
 **Audit updated:** 2026-11-12  
-**Reviewed commit:** `a628dcd63e1868e1cd6db4c8b9ce77b61c64a5ad`  
-**Validation run:** [GitHub Actions run 43186474390](https://github.com/shenshou/MyOnlineTools/actions/runs/43185920056)  
+**Reviewed commit:** `f5324d9ba134cea85468aa8f568ef25ffacfc135`  
+**Validation run:** [GitHub Actions run 43186474390](https://github.com/shenshou/MyOnlineTools/actions/runs/43187133112)  
 **Scope:** navigation data security and reliability, shared UI, architecture, automated tests, build pipeline, and performance.
 
 ## Executive summary
@@ -15,7 +15,7 @@ Accessibility work is explicitly deferred in the current execution phase. Existi
 
 | Area | Current baseline |
 | --- | --- |
-| Vitest | 39 tests across 7 files |
+| Vitest | 45 tests across 8 files |
 | Playwright E2E | 8 browser tests |
 | Dependency audit | `npm audit --audit-level=moderate` passes |
 | Production JavaScript | 79.5 KB gzip, 8 chunks |
@@ -55,6 +55,7 @@ Vue 3 + Vite + Vue Router (Hash) + Pinia
 ├── composables/                    shared interaction state
 ├── modules/navigation/
 │   ├── useNavigationData.js        remote load, baseline, session cache
+│   ├── useNavigationAdmin.js    administrator session lifecycle
 │   ├── useNavigationFilters.js     filtering and sorting
 │   ├── editor.js                   website/category edit operations
 │   ├── operations.js               import merge/deduplication

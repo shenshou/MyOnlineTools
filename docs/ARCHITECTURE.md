@@ -14,6 +14,7 @@ main.js
     └── NavigationView.vue
         ├── modules/navigation/useNavigationFilters.js
         ├── modules/navigation/useNavigationData.js
+        ├── modules/navigation/useNavigationAdmin.js
         ├── modules/navigation/editor.js
         ├── modules/navigation/operations.js
         ├── modules/navigation/validation.js
@@ -33,6 +34,7 @@ main.js
 | `src/modules/navigation/validation.js` | Navigation JSON schema validation and normalization |
 | `src/modules/navigation/useNavigationFilters.js` | Category counts, tags, filtering, and sorting |
 | `src/modules/navigation/useNavigationData.js` | Remote load, normalized baseline, dirty state, and session-cache fallback |
+| `src/modules/navigation/useNavigationAdmin.js` | Administrator login, session restoration, and logout state |
 | `src/modules/navigation/editor.js` | Pure website and category editing operations |
 | `src/modules/navigation/operations.js` | Import merge and deduplication rules |
 | `src/modules/navigation/github.js` | GitHub token session, validated data reads/writes, stale-write protection |
