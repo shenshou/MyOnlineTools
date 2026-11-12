@@ -40,7 +40,30 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Browser end-to-end tests
         run: npm run test:e2e
-      - name: Upload artifact
+      - name: Start production preview for Lighthouse
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/vite-preview.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/MyOnlineTools/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/vite-preview.log
+          exit 1
+      - name: Lighthouse performance audit
+        run: |
+          mkdir -p artifacts
+          CHROME_PATH="$(node --input-type=module -e "import { chromium } from '@playwright/test'; process.stdout.write(chromium.executablePath())")"
+          npx --yes lighthouse@12.8.2 http://127.0.0.1:4173/MyOnlineTools/ --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" --only-categories=performance --form-factor=mobile --throttling-method=simulate --output=json --output-path=./artifacts/lighthouse-performance.json --quiet
+          node scripts/report-lighthouse.js artifacts/lighthouse-performance.json
+      - name: Upload Lighthouse report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-performance-report
+          path: artifacts/lighthouse-performance.json
+          if-no-files-found: error
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
