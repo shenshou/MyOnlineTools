@@ -8,6 +8,7 @@ import {
 } from 'lucide-vue-next'
 import { defaultNavigationData } from '../modules/navigation/defaultData'
 import { normalizeNavigationData } from '../modules/navigation/validation'
+import { useNavigationFilters } from '../modules/navigation/useNavigationFilters'
 import WebsiteFavicon from '../modules/navigation/components/WebsiteFavicon.vue'
 import { useToast } from '../composables/useToast'
 import { useConfirm } from '../composables/useConfirm'
@@ -62,25 +63,7 @@ function emptyForm() {
 }
 function snapshot() { return JSON.stringify(data.value) }
 const dirty = computed(() => snapshot() !== baseline.value)
-const categoryCounts = computed(() => Object.fromEntries(data.value.categories.map(c => [c.id, data.value.websites.filter(w => w.categoryId === c.id).length])))
-const allTags = computed(() => [...new Set(data.value.websites.flatMap(w => w.tags || []))].sort((a,b) => a.localeCompare(b, 'zh-CN')))
-const filtered = computed(() => {
-  const q = search.value.trim().toLocaleLowerCase()
-  let items = data.value.websites.filter(w => {
-    const category = data.value.categories.find(c => c.id === w.categoryId)?.name || ''
-    const haystack = [w.name,w.url,domainOf(w.url),w.description,w.notes,category,...(w.tags || [])].join(' ').toLocaleLowerCase()
-    return (!q || haystack.includes(q))
-      && (selectedCategory.value === 'all' || w.categoryId === selectedCategory.value)
-      && (!selectedTag.value || (w.tags || []).includes(selectedTag.value))
-      && (!favoritesOnly.value || w.favorite)
-  })
-  if (sortMode.value === 'name-asc') items.sort((a,b) => a.name.localeCompare(b.name, 'zh-CN'))
-  else if (sortMode.value === 'name-desc') items.sort((a,b) => b.name.localeCompare(a.name, 'zh-CN'))
-  else if (sortMode.value === 'newest') items.sort((a,b) => b.createdAt-a.createdAt)
-  else if (sortMode.value === 'updated') items.sort((a,b) => b.updatedAt-a.updatedAt)
-  else items.sort((a,b) => (a.sortOrder ?? 0)-(b.sortOrder ?? 0))
-  return items
-})
+const { categoryCounts, allTags, filtered } = useNavigationFilters({ data, search, selectedCategory, selectedTag, favoritesOnly, sortMode })
 function domainOf(url) { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return '' } }
 function normalizeUrl(value) {
   const raw = value.trim()
