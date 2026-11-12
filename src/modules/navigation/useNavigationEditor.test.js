@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { useNavigationEditor } from './useNavigationEditor'
 
@@ -27,6 +27,7 @@ const createState = ({ authorized = true, categories = [category, secondCategory
 describe('useNavigationEditor', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('requires administrator authorization before opening the editor', () => {
@@ -60,7 +61,7 @@ describe('useNavigationEditor', () => {
       tags: ['AI', 'tools'], createdAt: 99,
     })
     expect(state.editor.showForm.value).toBe(false)
-    expect(state.onMessage).toHaveBeenCalledWith(expect.stringContaining('尚未'))
+    expect(state.onMessage).toHaveBeenCalledWith(expect.stringContaining('暂存'))
   })
 
   it('keeps the form open and reports duplicate URLs', () => {
