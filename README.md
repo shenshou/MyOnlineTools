@@ -84,21 +84,22 @@ MyOnlineTools 收集并整合常用的小型在线工具，重点关注使用效
 
 - **交互基础：** Button、Input、Textarea、Select、Tabs、Dropdown、Tooltip。
 - **反馈与状态：** Modal、ConfirmDialog、ToastContainer、EmptyState、Loading。
-- **统一样式：** `src/styles/tokens.css` 定义浅色/深色主题语义色、品牌插画与工具分类配色、字体、间距、圆角、阴影、焦点状态和层级变量。
+- **统一样式：** `src/styles/tokens.css` 定义浅色/深色主题语义色、品牌与工具分类配色、字体、间距、圆角、阴影、焦点状态和层级变量。
 - **业务组件：** 工具卡片与网址导航页面继续保留在各自功能模块中，避免把业务规则塞进通用组件。
 
-页面优先复用共享控件；复杂编辑器等具有专用交互的区域仍保留原生控件和独立样式。
+页面优先复用共享控件；复杂编辑器等具有专用交互的区域仍保留原生控件和独立样式。每个共享组件的 Props、Events、Slots、默认值和使用示例见 [UI 组件文档](src/components/ui/README.md)。
 
 ## 质量保障与测试
 
 - 使用 Vitest 运行单元测试和共享组件测试。
-- GitHub Actions 使用 `npm ci` 安装锁定依赖，并执行单元测试、依赖安全审计、生产构建、构建体积预算、设计令牌检查、Playwright E2E 和移动端 Lighthouse 性能测量后再部署。
+- 每次代码提交的 GitHub Actions 质量门禁包括：锁定依赖安装、单元测试、依赖安全审计、生产构建、构建体积预算、设计令牌检查和 Playwright E2E；全部通过后才部署 GitHub Pages。
 - 当前包含 63 项 Vitest 单元/组件测试，以及 10 项 Playwright 浏览器 E2E 测试，覆盖工具流程、导航管理、GitHub 授权和保存冲突恢复。
+- Lighthouse 移动端性能审计独立运行：每周一自动执行，也可在 GitHub Actions 中手动触发；报告作为 workflow artifact 保存，不阻塞日常部署。
 - 安全模型、Token 使用边界和数据恢复方式见 [安全说明](docs/SECURITY.md)；模块职责与扩展方式见 [架构说明](docs/ARCHITECTURE.md)。
 
 ## 性能基线
 
-CI 会检查 JavaScript/CSS gzip 体积预算，并生成移动端 Lighthouse Performance 报告。当前首次正式基线为 99/100，详细指标见 [性能说明](docs/PERFORMANCE.md)。
+项目使用 Lighthouse 移动端 Performance 测量跟踪性能趋势，并检查 JavaScript/CSS gzip 体积预算。Lighthouse 报告由独立的定期/手动工作流生成；CI runner 和模拟网络环境存在波动，单次分数仅作为实验室参考，不代表所有真实设备上的固定体验。详细指标见 [性能说明](docs/PERFORMANCE.md)。
 
 ## 本地运行
 
@@ -154,7 +155,8 @@ MyOnlineTools/
 ├── e2e/                     # Playwright 浏览器端到端测试
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml       # GitHub Pages 自动部署工作流
+│       ├── deploy.yml       # 质量门禁与 GitHub Pages 自动部署
+│       └── performance.yml  # 定期/手动 Lighthouse 性能审计
 ├── public/                  # 静态资源与公开网址导航数据
 │   └── data/
 │       └── navigation.json
@@ -196,9 +198,10 @@ MyOnlineTools/
 
 - 部署工作流：`.github/workflows/deploy.yml`
 - 触发条件：向 `main` 分支推送代码，或在 GitHub Actions 页面手动运行工作流。
-- 工作流使用 `npm ci` 安装锁定依赖；执行 `npm test`、`npm audit --audit-level=moderate`、`npm run build`、`npm run check:bundle`、`npm run test:e2e` 和 Lighthouse 移动端性能审计后部署。
+- 工作流使用 `npm ci` 安装锁定依赖；执行 `npm test`、`npm audit --audit-level=moderate`、`npm run build`、`npm run check:bundle`、`npm run check:tokens` 和 `npm run test:e2e`，全部通过后部署。
+- 性能审计工作流：`.github/workflows/performance.yml`，每周一 UTC 03:17 自动运行，也可手动触发；不会参与日常 Pages 部署门禁。
 - 例外：仅修改 `public/data/navigation.json` 时不会触发 Pages 构建；导航页面直接从 GitHub 仓库读取最新 JSON。
-- 质量检查：`npm test`、`npm run check:bundle`、`npm run check:tokens`
+- 本地质量检查：`npm test`、`npm run check:bundle`、`npm run check:tokens`；E2E 使用 `npm run test:e2e`。
 - 发布目录：`dist/`
 - Vite 公共基础路径：`/MyOnlineTools/`
 

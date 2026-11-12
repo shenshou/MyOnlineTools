@@ -1,0 +1,55 @@
+name: Lighthouse Performance Audit
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: lighthouse-performance
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Build production site
+        run: npm run build
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start production preview
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/vite-preview.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/MyOnlineTools/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/vite-preview.log
+          exit 1
+      - name: Run Lighthouse mobile performance audit
+        run: |
+          mkdir -p artifacts
+          CHROME_PATH="$(node --input-type=module -e "import { chromium } from '@playwright/test'; process.stdout.write(chromium.executablePath())")"
+          npx --yes lighthouse@12.8.2 http://127.0.0.1:4173/MyOnlineTools/ --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" --only-categories=performance --form-factor=mobile --throttling-method=simulate --output=json --output-path=./artifacts/lighthouse-performance.json --quiet
+          node scripts/report-lighthouse.js artifacts/lighthouse-performance.json
+      - name: Upload Lighthouse report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-performance-report
+          path: artifacts/lighthouse-performance.json
+          if-no-files-found: error
