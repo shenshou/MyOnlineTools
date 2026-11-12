@@ -71,7 +71,7 @@ describe('normalizeNavigationData', () => {
 
   it('rejects oversized navigation documents before processing records', () => {
     const oversized = validData()
-    oversized.websites[0].notes = 'x'.repeat(5 * 1024 * 1024 + 1)
+    oversized.websites[0].notes = '中'.repeat(1_800_000)
     expect(() => normalizeNavigationData(oversized)).toThrow('不能超过 5 MB')
   })
 

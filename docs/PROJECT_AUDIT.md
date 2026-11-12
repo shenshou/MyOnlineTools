@@ -1,59 +1,95 @@
-# Project Maturity Audit
+# Project maturity audit
 
-**Audit baseline:** `cc88b3fc768b38f8e542debc9a351fb62e37953f` (initial static review)  
-**Current implementation reviewed through:** `6dad1ebc195785a2ab974f95455a19d7fd2c1d1e` plus the passing CI run for the current E2E test changes.  
-**Scope:** repository structure, navigation persistence, tool execution, shared UI, dependency graph, and GitHub Pages pipeline.
+**Audit updated:** 2026-11-12  
+**Reviewed commit:** `f1f929722e74946496a9dacb23bbd3616e481e5c`  
+**Validation run:** [GitHub Actions run 43185920056](https://github.com/shenshou/MyOnlineTools/actions/runs/43185920056)  
+**Scope:** navigation data security and reliability, shared UI, architecture, automated tests, build pipeline, and performance.
 
 ## Executive summary
 
-The project now has an initial quality and security foundation: navigation validation and stale-write protection, isolated regex execution, browser-storage recovery, a Vitest suite, component interaction tests, lazy-loaded routes, a committed npm lockfile, and CI dependency auditing. The remaining work is primarily broader accessibility review, continued decomposition of the large navigation view, and measured performance testing.
+MyOnlineTools has moved beyond its initial utility-site implementation. The repository now has validated navigation persistence with optimistic concurrency checks, conflict recovery that preserves staged edits, modular navigation data/editor logic, automated unit and browser tests, least-privilege deployment jobs, production bundle budgets, and a repeatable mobile Lighthouse performance report.
+
+Accessibility work is explicitly deferred in the current execution phase. Existing semantic markup and keyboard behaviors are retained, but no new accessibility audit or remediation is claimed here.
+
+## Current quality baseline
+
+| Area | Current baseline |
+| --- | --- |
+| Vitest | 39 tests across 7 files |
+| Playwright E2E | 8 browser tests |
+| Dependency audit | `npm audit --audit-level=moderate` passes |
+| Production JavaScript | 79.5 KB gzip, 8 chunks |
+| Largest JavaScript chunk | 51.6 KB gzip |
+| Production CSS | 10.3 KB gzip |
+| Lighthouse mobile Performance | 99/100 |
+| FCP / LCP | 1,471 ms / 2,127 ms |
+| TBT / CLS | 39 ms / 0.000 |
+| GitHub Pages deployment | Successful for reviewed commit |
+
+Lighthouse results are lab measurements from a GitHub-hosted runner and should be compared over repeated runs rather than treated as guaranteed field metrics.
 
 ## Findings and status
 
 | ID | Priority | Finding | Status |
 | --- | --- | --- | --- |
-| AUD-01 | High | A stale tab could overwrite a newer navigation document if it fetched the newest SHA only at save time. | **Resolved:** compare latest remote JSON to the loaded baseline, then write with that same response's SHA. |
-| AUD-02 | High | Malformed localStorage JSON could crash preference-store initialization. | **Resolved:** guarded parsing, type validation, and safe writes. |
-| AUD-03 | High | Navigation imports had shallow validation. | **Resolved:** centralized schema validation, URL protocol/credential checks, field limits, and uniqueness/reference checks. |
-| AUD-04 | Medium | Merge import did not register inserted URLs in its lookup map. | **Resolved:** imported documents are normalized and duplicate URLs rejected; merge lookup is updated as entries are inserted. |
-| AUD-05 | Medium | Regex matching ran synchronously on the main thread without input bounds. | **Resolved:** dedicated worker, 200-character pattern limit, 20,000-character input limit, and 500 ms timeout. |
-| AUD-06 | Medium | Modal focus handling queried the first document-wide modal. | **Resolved:** each modal owns its panel reference and focus trap. |
-| AUD-07 | Medium | Browser storage access was not consistently guarded. | **Resolved:** safe reads/writes for preferences, navigation view preferences, and token session access. |
-| AUD-08 | Medium | No committed dependency lockfile; installs were not reproducible. | **Resolved:** package-lock is committed and CI uses `npm ci`; a dedicated job synchronizes the lockfile without running dependency lifecycle scripts. |
-| AUD-09 | Medium | No automated tests or CI test gate. | **Resolved:** 19 unit/component tests and 3 Playwright browser E2E tests run in CI before deployment. |
-| AUD-10 | Low | Global CSS still contains legacy literal colors alongside semantic tokens. | **Open:** avoid a risky whole-site CSS rewrite; migrate incrementally. |
-| AUD-11 | Low | Global search lacked complete keyboard and ARIA semantics. | **Partially resolved:** combobox/listbox semantics and arrow/Enter interaction added; full screen-reader testing remains outstanding. |
-| AUD-12 | Low | Third-party font and favicon requests. | **Partially resolved:** blocking Google Fonts import removed; favicon fallback can still contact Google and destination sites. |
+| AUD-01 | High | A stale tab could overwrite a newer navigation document. | **Resolved:** compare remote JSON with the loaded baseline and write using the same response's SHA. |
+| AUD-02 | High | Malformed navigation input could bypass page-level checks. | **Resolved:** normalize and validate at import and persistence boundaries; document size is limited to 5 MiB UTF-8. |
+| AUD-03 | High | Concurrent writes could silently lose staged edits. | **Resolved:** baseline and write-time conflicts are distinguished; staged data remains in page state and can be exported before reload. |
+| AUD-04 | High | GitHub persistence had limited automated failure coverage. | **Improved:** tests cover missing authorization, invalid payloads, stale baseline, successful UTF-8 writes, write conflicts, and server failures without blind retries. |
+| AUD-05 | Medium | Website/category editor rules were coupled to the large view component. | **Partially resolved:** pure operations extracted to `editor.js`; view-level orchestration remains to be decomposed. |
+| AUD-06 | Medium | Navigation loading/cache/baseline state was coupled to the view. | **Resolved:** extracted to `useNavigationData.js` with remote-load, valid-cache fallback, and failure tests. |
+| AUD-07 | Medium | CI had broader write permissions and silently synchronized the lockfile. | **Resolved:** CI now uses `npm ci`; build job is read-only and deploy job receives only Pages/id-token permissions. |
+| AUD-08 | Medium | Bundle growth was not guarded. | **Resolved:** CI enforces 200 KB total JS gzip, 100 KB largest JS chunk, and 40 KB CSS gzip budgets. |
+| AUD-09 | Medium | Browser performance had no repeatable baseline. | **Resolved:** mobile Lighthouse Performance audit runs in CI and uploads its JSON report. |
+| AUD-10 | Low | Design tokens coexisted with legacy literal styles. | **Partially resolved:** semantic overlays, alerts, status colors, and shared surfaces migrated; more legacy styles remain. |
+| AUD-11 | Low | The navigation view remains a large file. | **Open:** continue extracting authentication/save orchestration and presentation subcomponents when this reduces coupling. |
+| AUD-12 | Low | Accessibility has not received a complete manual audit. | **Deferred by project decision:** do not include accessibility remediation in the current phase. |
 
-## Architecture baseline
+## Current architecture
 
 ```text
 Vue 3 + Vite + Vue Router (Hash) + Pinia
-├── App.vue                 application shell, global search, navigation
-├── views/                  lazy-loaded page views
-├── data/tools.js           tool metadata
-├── utils/toolActions.js    tool execution logic
-├── workers/                isolated regex execution
+├── App.vue                         application shell and global search
+├── views/                          lazy-loaded pages
+├── components/ui/                  shared UI primitives
+├── composables/                    shared interaction state
 ├── modules/navigation/
-│   ├── github.js           GitHub Contents API and token session
-│   ├── validation.js       navigation data validation
-│   └── useNavigationFilters.js
-├── stores/preferences.js  browser preferences
-├── components/ui/          shared UI primitives
-└── styles/                 design tokens + global CSS
+│   ├── useNavigationData.js        remote load, baseline, session cache
+│   ├── useNavigationFilters.js     filtering and sorting
+│   ├── editor.js                   website/category edit operations
+│   ├── operations.js               import merge/deduplication
+│   ├── validation.js               schema, URL, and size validation
+│   └── github.js                   token session and GitHub Contents API
+├── workers/                        isolated regex processing
+└── styles/                         semantic design tokens
 ```
 
 ## Eight-stage execution record
 
-1. **Quality audit:** completed; baseline findings recorded.
-2. **Security and data reliability:** core storage, import, token access, regex execution, and navigation write protections implemented.
-3. **Automated testing:** completed initial unit, component, and browser E2E coverage. Current suite: 19 Vitest tests across 3 files plus 3 Playwright E2E tests.
-4. **Architecture and maintainability:** navigation filters extracted; validation and GitHub persistence are separate modules. The main navigation view remains large and should be split incrementally.
-5. **UX and accessibility:** modal focus ownership and global search keyboard interaction improved. Full manual screen-reader and cross-browser accessibility checks remain.
-6. **Performance:** lazy route loading, system font stack, and worker-based regex processing implemented. No formal Lighthouse/Core Web Vitals baseline has been captured.
-7. **Engineering and release:** lockfile, `npm ci`, unit-test gate, dependency audit, build, and Pages deployment pipeline configured.
-8. **Documentation and maintenance:** architecture, security, setup, testing, and recovery guidance added.
+1. **Quality audit:** baseline findings documented; automated quality gates expanded.
+2. **Security and data reliability:** token boundary documented, navigation validation and size limit enforced, stale writes protected, and conflict recovery added.
+3. **Automated testing:** 39 Vitest tests and 8 Playwright E2E tests run before deployment.
+4. **Architecture:** navigation editor operations and data-loading state extracted; remaining view orchestration still needs decomposition.
+5. **UX/UI:** shared component library established; semantic tokens are being migrated incrementally.
+6. **Performance:** route splitting and worker execution retained; bundle budgets and mobile Lighthouse baseline now run in CI.
+7. **Engineering/release:** least-privilege build/deploy jobs, lockfile enforcement via `npm ci`, security audit, E2E, performance report, and Pages deployment.
+8. **Documentation:** README, architecture, security, performance, and this audit updated.
+
+## Remaining work
+
+### In progress / next
+
+- Extract administrator authentication and GitHub save orchestration from `NavigationView.vue`.
+- Add an explicit conflict-recovery workflow test for reloading and reapplying staged edits.
+- Continue migrating remaining semantic colors and repeated spacing/radius values to design tokens.
+- Review GitHub API error handling and recovery messages against rate-limit, permission, and network failures.
+- Continue measuring Lighthouse results over several runs before introducing score-based CI gates.
+
+### Deferred
+
+- Full accessibility audit, screen-reader testing, and dedicated accessibility remediation.
+- Manual cross-browser and assistive-technology validation.
 
 ## Validation limits
 
-CI proves that dependency installation, automated tests, security audit, browser E2E flows, and production build pass for a commit. It does not replace broader manual assistive-technology checks, cross-browser coverage, or measured performance testing.
+Automated CI demonstrates that the checked-in tests, dependency audit, build, bundle budgets, Lighthouse collection, and deployment pass for a specific commit. It does not prove absence of all application vulnerabilities, replace manual browser testing, or guarantee field performance for every device and network.

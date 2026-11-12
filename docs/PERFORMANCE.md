@@ -26,7 +26,7 @@ Measured in GitHub Actions on 2026-11-12 (Node 22, Vite production build):
 | Largest JavaScript chunk, gzip | 51.6 KB | 100 KB |
 | Total CSS, gzip | 10.3 KB | 40 KB |
 
-These are build-artifact measurements, not Lighthouse scores or real-user Core Web Vitals.
+The first successful Lighthouse baseline after the overlay-token CSS correction was measured on 2026-11-12:\n\n| Metric | Measured |\n| --- | ---: |\n| Mobile Performance score | 99/100 |\n| First Contentful Paint | 1,471 ms |\n| Largest Contentful Paint | 2,127 ms |\n| Total Blocking Time | 39 ms |\n| Cumulative Layout Shift | 0.000 |\n\nThese are lab measurements from one GitHub-hosted runner, not guarantees of real-user Core Web Vitals.
 
 ## Lighthouse performance report
 
