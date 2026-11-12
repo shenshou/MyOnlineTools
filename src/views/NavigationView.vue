@@ -10,6 +10,8 @@ import { defaultNavigationData } from '../modules/navigation/defaultData'
 import { normalizeNavigationData } from '../modules/navigation/validation'
 import { useNavigationFilters } from '../modules/navigation/useNavigationFilters'
 import WebsiteFavicon from '../modules/navigation/components/WebsiteFavicon.vue'
+import NavigationDetailsDrawer from '../modules/navigation/components/NavigationDetailsDrawer.vue'
+import { mergeNavigationData } from '../modules/navigation/operations'
 import { useToast } from '../composables/useToast'
 import { useConfirm } from '../composables/useConfirm'
 import { Button, Input, Textarea, Select, EmptyState, Loading, Modal } from '../components/ui'
@@ -251,24 +253,9 @@ async function importData() {
       if (!ok) return
       data.value = { schemaVersion: 1, categories: incoming.categories, websites: incoming.websites, updatedAt: Date.now() }
     } else {
-      const categories = [...data.value.categories]
-      for (const c of incoming.categories) if (!categories.some(x => x.id === c.id)) categories.push(c)
-      const websites = [...data.value.websites]
-      const urlMap = new Map(websites.map(w => [normalizeUrl(w.url).toLowerCase(), w]))
-      let added = 0, updated = 0
-      for (const w of incoming.websites) {
-        const url = normalizeUrl(w.url)
-        const existing = urlMap.get(url.toLowerCase())
-        if (existing) { Object.assign(existing, w, { id: existing.id, url, updatedAt: Date.now() }); updated++ }
-        else {
-          const inserted = { ...w, url }
-          websites.push(inserted)
-          urlMap.set(url.toLowerCase(), inserted)
-          added++
-        }
-      }
-      data.value = { schemaVersion: 1, categories, websites, updatedAt: Date.now() }
-      markMessage(`合并完成：新增 ${added} 条，更新 ${updated} 条。尚未保存到 GitHub。`)
+      const result = mergeNavigationData(data.value, incoming)
+      data.value = result.data
+      markMessage(`合并完成：新增 ${result.added} 条，更新 ${result.updated} 条。尚未保存到 GitHub。`)
     }
     showImport.value = false
     importText.value = ''
@@ -393,20 +380,16 @@ function iconFor(category) {
       </section>
     </div>
 
-    <div v-if="selectedWebsite" class="nav-drawer-backdrop" @click.self="selectedWebsite=null">
-      <aside class="nav-drawer">
-        <div class="nav-drawer-head"><span>网站详情</span><Button class="nav-icon-action" @click="selectedWebsite=null" type="button" variant="ghost" size="sm"><X/></Button></div>
-        <div class="nav-drawer-content">
-          <div class="nav-drawer-brand"><WebsiteFavicon :website="selectedWebsite" :size="48"/><div><h2>{{selectedWebsite.name}}</h2><a :href="selectedWebsite.url" target="_blank" rel="noreferrer">{{domainOf(selectedWebsite.url)}} <ExternalLink :size="12"/></a></div></div>
-          <div class="nav-drawer-actions"><Button class="nav-btn nav-btn-primary" @click="openWebsite(selectedWebsite)" type="button" variant="primary"><ExternalLink :size="15"/>访问网站</Button><Button v-if="admin" class="nav-btn nav-btn-light" @click="openEdit(selectedWebsite)" type="button" variant="secondary"><Pencil :size="15"/>编辑</Button><Button v-if="admin" class="nav-btn nav-btn-light nav-danger" @click="deleteWebsite(selectedWebsite)" type="button" variant="secondary"><Trash2 :size="15"/></Button></div>
-          <div class="nav-detail-section"><label>简介</label><p>{{selectedWebsite.description || '暂无简介'}}</p></div>
-          <div class="nav-detail-section"><label>详细备注</label><p class="nav-detail-notes">{{selectedWebsite.notes || '暂无详细备注'}}</p></div>
-          <div class="nav-detail-section"><label>网址</label><a :href="selectedWebsite.url" target="_blank" rel="noreferrer">{{selectedWebsite.url}}</a></div>
-          <div class="nav-detail-section"><label>分类与标签</label><p>{{data.categories.find(c=>c.id===selectedWebsite.categoryId)?.name || '未分类'}}</p><div class="website-tags"><span v-for="tag in selectedWebsite.tags" :key="tag"># {{tag}}</span></div></div>
-          <div class="nav-detail-meta"><span>创建：{{new Date(selectedWebsite.createdAt).toLocaleString()}}</span><span>更新：{{new Date(selectedWebsite.updatedAt).toLocaleString()}}</span></div>
-        </div>
-      </aside>
-    </div>
+    <NavigationDetailsDrawer
+      v-if="selectedWebsite"
+      :website="selectedWebsite"
+      :categories="data.categories"
+      :admin="admin"
+      @close="selectedWebsite = null"
+      @visit="openWebsite"
+      @edit="openEdit"
+      @delete="deleteWebsite"
+    />
 
     <Modal v-model="showForm" :title="editingId ? '编辑网址' : '添加网址'" size="lg">
         

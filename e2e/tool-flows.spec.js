@@ -52,3 +52,23 @@ test('administrator authorization rejects tokens without repository write access
   await expect(page.getByRole('dialog', { name: 'GitHub 管理员授权' })).toBeVisible()
   expect(await page.evaluate(() => sessionStorage.getItem('mot-navigation-github-token'))).toBeNull()
 })
+
+test('website details drawer exposes a dialog and closes with Escape', async ({ page }) => {
+  await page.goto('/MyOnlineTools/#/navigation')
+  await page.getByRole('button', { name: 'B站' }).click()
+  const dialog = page.getByRole('dialog', { name: '网站详情' })
+  await expect(dialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+})
+
+test('invalid navigation import is rejected without closing the import dialog', async ({ page }) => {
+  await page.goto('/MyOnlineTools/#/navigation')
+  await page.getByTitle('导入 JSON').click()
+  const dialog = page.getByRole('dialog', { name: '导入网址数据' })
+  await expect(dialog).toBeVisible()
+  await page.getByLabel('JSON 数据').fill('{ invalid json')
+  await page.getByRole('button', { name: '开始导入' }).click()
+  await expect(page.locator('.nav-alert-error')).toBeVisible()
+  await expect(dialog).toBeVisible()
+})
