@@ -48,21 +48,50 @@ export async function restoreAdminSession() {
 }
 
 async function api(path, options = {}, token = accessToken) {
-  const response = await fetch(API + path, {
-    ...options,
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  })
+  let response
+  try {
+    response = await fetch(API + path, {
+      ...options,
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    })
+  } catch (cause) {
+    const error = new Error('无法连接 GitHub API，请检查网络或代理设置后重试。')
+    error.code = 'NETWORK_ERROR'
+    error.cause = cause
+    throw error
+  }
+
   const body = await response.json().catch(() => ({}))
   if (!response.ok) {
-    const error = new Error(body.message || `GitHub API 请求失败（${response.status}）`)
+    const detail = body.message || `HTTP ${response.status}`
+    const remaining = response.headers?.get?.('x-ratelimit-remaining')
+    const isRateLimited = response.status === 429
+      || (response.status === 403 && (remaining === '0' || /rate limit/i.test(detail)))
+
+    let message = detail
+    if (response.status === 401) {
+      message = 'GitHub 访问令牌无效或已过期，请重新授权。'
+    } else if (isRateLimited) {
+      message = 'GitHub API 请求次数已达上限，请稍后再试。'
+    } else if (response.status === 403) {
+      message = 'GitHub 拒绝了请求，请检查令牌权限和仓库访问范围。'
+    } else if (response.status === 404) {
+      message = '找不到目标仓库或网址数据文件，请检查仓库配置和令牌访问范围。'
+    } else if (response.status >= 500) {
+      message = 'GitHub 服务暂时不可用，请稍后重试。'
+    }
+
+    const error = new Error(message === detail ? detail : `${message}（GitHub：${detail}）`)
     error.status = response.status
-    if ([409, 422].includes(response.status) && /sha|reference|conflict/i.test(body.message || '')) {
+    error.retryAfter = response.headers?.get?.('retry-after') || null
+    error.rateLimitReset = response.headers?.get?.('x-ratelimit-reset') || null
+    if ([409, 422].includes(response.status) && /sha|reference|conflict/i.test(detail)) {
       error.code = 'WRITE_CONFLICT'
     }
     throw error

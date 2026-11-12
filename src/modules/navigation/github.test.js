@@ -3,6 +3,7 @@ import {
   clearAccessToken,
   saveNavigationData,
   setAccessToken,
+  verifyAdminToken,
 } from './github'
 
 const baseline = {
@@ -32,15 +33,46 @@ function encodeBase64Utf8(value) {
   return btoa(binary)
 }
 
-function jsonResponse(body, status = 200) {
+function jsonResponse(body, status = 200, headers = {}) {
   return {
     ok: status >= 200 && status < 300,
     status,
+    headers: { get: name => headers[name.toLowerCase()] || null },
     json: async () => body,
   }
 }
 
 describe('saveNavigationData', () => {
+  it('explains expired or revoked administrator tokens', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ message: 'Bad credentials' }, 401)))
+    await expect(verifyAdminToken('expired-token')).rejects.toMatchObject({
+      status: 401,
+      message: expect.stringContaining('无效或已过期'),
+    })
+  })
+
+  it('distinguishes API rate limits and exposes retry metadata', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(
+      { message: 'API rate limit exceeded' },
+      403,
+      { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': '1794500000' },
+    )))
+    await expect(verifyAdminToken('rate-limited-token')).rejects.toMatchObject({
+      status: 403,
+      message: expect.stringContaining('请求次数已达上限'),
+      rateLimitReset: '1794500000',
+    })
+  })
+
+  it('reports a recoverable network message when the GitHub API cannot be reached', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    await expect(verifyAdminToken('network-token')).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      message: expect.stringContaining('检查网络或代理'),
+    })
+  })
+
+
   beforeEach(() => {
     clearAccessToken()
     setAccessToken('test-token')
