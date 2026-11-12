@@ -7,43 +7,15 @@ on:
       - 'public/data/navigation.json'
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  lockfile:
+  build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-    steps:
-      - name: Checkout latest main (including lockfile bootstrap)
-        uses: actions/checkout@v4
-        with:
-          ref: main
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Synchronize dependency lockfile
-        run: |
-          npm install --package-lock-only --ignore-scripts
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: synchronize npm dependency lockfile"
-            git push
-          fi
-
-  build:
-    needs: lockfile
-    runs-on: ubuntu-latest
+      contents: read
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v4
@@ -53,6 +25,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - name: Install locked dependencies
         run: npm ci
       - name: Unit tests
@@ -61,6 +34,8 @@ jobs:
         run: npm audit --audit-level=moderate
       - name: Build
         run: npm run build
+      - name: Check production bundle budgets
+        run: npm run check:bundle
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser end-to-end tests
@@ -76,6 +51,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      pages: write
+      id-token: write
     steps:
       - name: Deploy
         id: deployment
