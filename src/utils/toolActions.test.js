@@ -3,9 +3,7 @@ import { runTool } from './toolActions'
 
 describe('runTool', () => {
   it('formats and minifies valid JSON', async () => {
-    expect(await runTool('json', '{"a":1}')).toBe('{
-  "a": 1
-}')
+    expect(await runTool('json', '{"a":1}')).toBe(['{', '  "a": 1', '}'].join('\n'))
     expect(await runTool('json', '{ "a": 1 }', { mode: 'minify' })).toBe('{"a":1}')
   })
 
@@ -25,8 +23,7 @@ describe('runTool', () => {
   })
 
   it('counts Unicode code points and UTF-8 bytes', async () => {
-    const result = await runTool('text-stats', 'A😀
-中')
+    const result = await runTool('text-stats', 'A😀\n中')
     expect(result).toContain('字符数：4')
     expect(result).toContain('行数：2')
     expect(result).toContain('字节数（UTF-8）：9')

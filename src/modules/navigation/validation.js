@@ -12,6 +12,11 @@ function requireString(value, label, maxLength, { optional = false } = {}) {
 
 function normalizeHttpUrl(value, label) {
   const raw = requireString(value, label, 2048)
+  const explicitScheme = raw.match(/^([a-z][a-z0-9+.-]*):/i)?.[1]?.toLowerCase()
+  const hostAndPort = /^[a-z0-9.-]+:\d+(?:\/|$)/i.test(raw)
+  if (explicitScheme && !['http', 'https'].includes(explicitScheme) && !hostAndPort) {
+    throw new Error(`${label}只支持 HTTP 或 HTTPS`)
+  }
   let parsed
   try { parsed = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`) }
   catch { throw new Error(`${label}格式无效`) }
