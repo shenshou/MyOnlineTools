@@ -145,3 +145,101 @@ test('GitHub write conflicts preserve staged edits and offer an export', async (
   const download = await downloadPromise
   expect(download.suggestedFilename()).toBe('navigation.json')
 })
+
+
+test('administrator can recover a conflicted edit by exporting, reloading, and reapplying it', async ({ page }) => {
+  const remoteData = structuredClone(navigationFixture)
+  remoteData.websites.push({
+    id: 'remote-concurrent-example',
+    name: 'Remote concurrent update',
+    url: 'https://remote-concurrent.example/',
+    favicon: '',
+    description: 'Added by another editor',
+    notes: '',
+    categoryId: remoteData.categories[0].id,
+    tags: [],
+    favorite: false,
+    sortOrder: remoteData.websites.length + 1,
+    createdAt: 20,
+    updatedAt: 20,
+  })
+  let baselineReads = 0
+  let writes = 0
+
+  await page.route('https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/public/data/navigation.json**', async route => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(navigationFixture) })
+  })
+  await page.route('https://api.github.com/repos/shenshou/MyOnlineTools', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ full_name: 'shenshou/MyOnlineTools', permissions: { push: true } }),
+    })
+  })
+  await page.route('https://api.github.com/repos/shenshou/MyOnlineTools/contents/public/data/navigation.json**', async route => {
+    if (route.request().method() === 'GET') {
+      const acceptsRaw = route.request().headers().accept?.includes('application/vnd.github.raw+json')
+      if (acceptsRaw) {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(remoteData) })
+        return
+      }
+      const current = baselineReads++ === 0 ? navigationFixture : remoteData
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          sha: 'fixture-file-sha',
+          content: Buffer.from(JSON.stringify(current), 'utf8').toString('base64'),
+          encoding: 'base64',
+        }),
+      })
+      return
+    }
+
+    writes += 1
+    if (writes === 1) {
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'sha does not match' }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ commit: { sha: 'recovered-save-commit' } }),
+    })
+  })
+
+  await page.goto('/MyOnlineTools/#/navigation')
+  await page.getByRole('button', { name: '管理员登录' }).click()
+  await page.getByLabel('Personal Access Token').fill('github_pat_test_recovery')
+  await page.getByRole('button', { name: '验证并登录' }).click()
+  await page.getByLabel('关闭').click()
+
+  await page.getByRole('button', { name: '添加网址' }).click()
+  await page.getByLabel('网站名称 *').fill('Staged local edit')
+  await page.getByLabel('网址 *').fill('https://staged-local.example')
+  await page.getByRole('button', { name: '保存更改' }).click()
+  await page.getByRole('button', { name: '保存到 GitHub' }).click()
+  await expect(page.getByText(/远端数据已发生变化/)).toBeVisible()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: '导出待保存数据' }).click()
+  const download = await downloadPromise
+  const stagedDocument = JSON.parse(readFileSync(await download.path(), 'utf8'))
+  expect(stagedDocument.websites.some(website => website.name === 'Staged local edit')).toBe(true)
+
+  await page.reload()
+  await expect(page.getByText('Remote concurrent update')).toBeVisible()
+  await page.locator('button[title="导入 JSON"]').click()
+  await page.getByLabel('JSON 数据').fill(JSON.stringify(stagedDocument))
+  await page.getByRole('button', { name: '开始导入' }).click()
+
+  await expect(page.getByText('Staged local edit')).toBeVisible()
+  await expect(page.getByText('Remote concurrent update')).toBeVisible()
+  await page.getByRole('button', { name: '保存到 GitHub' }).click()
+  await expect(page.getByText(/已保存到 GitHub/)).toBeVisible()
+  expect(writes).toBe(2)
+})
