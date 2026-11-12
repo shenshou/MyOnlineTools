@@ -58,6 +58,12 @@ For CPU-intensive or potentially unbounded work, prefer a Web Worker with explic
 
 The canonical data file is `public/data/navigation.json`. It uses `schemaVersion: 1`, a categories array, a websites array, and an `updatedAt` timestamp. Validate any imported document through `normalizeNavigationData`; do not bypass validation in new import paths.
 
+## Automated tests
+
+- Vitest: `npm test` for tool logic, navigation validation, and shared component behavior.
+- Playwright: `npm run test:e2e` for browser-level JSON, regex-worker, and navigation smoke flows. Install Chromium first with `npx playwright install chromium`.
+- GitHub Actions runs both suites against the production preview before deployment.
+
 ## Development commands
 
 ```bash
@@ -72,7 +78,7 @@ npm run preview
 
 - Confirm the intended changes are on `main`.
 - Confirm the lockfile is synchronized and `npm ci` succeeds.
-- Confirm unit/component tests, dependency audit, and production build pass.
+- Confirm unit/component tests, Playwright E2E tests, dependency audit, and production build pass.
 - Confirm the GitHub Pages deployment job succeeds.
 - For a bad release, revert the offending commit (or commits) and push to `main`; the normal workflow rebuilds and redeploys the reverted state.
 - Before major navigation data changes, export `navigation.json` as a backup.

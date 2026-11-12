@@ -93,7 +93,7 @@ MyOnlineTools 收集并整合常用的小型在线工具，重点关注使用效
 
 - 使用 Vitest 运行单元测试和共享组件测试。
 - GitHub Actions 在部署前执行锁文件同步、依赖安全审计、测试和生产构建。
-- 当前测试覆盖工具处理逻辑、导航数据校验和 Tabs 键盘交互；尚未建立完整浏览器 E2E 测试。
+- 当前包含 19 项 Vitest 单元/组件测试，以及 3 项 Playwright 浏览器 E2E 测试，覆盖 JSON 格式化、正则 Worker 和网址导航加载。
 - 安全模型、Token 使用边界和数据恢复方式见 [安全说明](docs/SECURITY.md)；模块职责与扩展方式见 [架构说明](docs/ARCHITECTURE.md)。
 
 ## 本地运行
@@ -131,6 +131,8 @@ npm run build
 
 ```bash
 npm test
+npx playwright install chromium
+npm run test:e2e
 ```
 
 ### 本地预览生产构建
@@ -144,6 +146,7 @@ npm run preview
 ```text
 MyOnlineTools/
 ├── docs/                    # 安全、架构与审计文档
+├── e2e/                     # Playwright 浏览器端到端测试
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml       # GitHub Pages 自动部署工作流
@@ -177,6 +180,7 @@ MyOnlineTools/
 │   └── style.css
 ├── index.html
 ├── package.json
+├── playwright.config.js
 ├── package-lock.json        # 可重复安装的依赖锁文件
 └── vite.config.js
 ```
@@ -187,9 +191,9 @@ MyOnlineTools/
 
 - 部署工作流：`.github/workflows/deploy.yml`
 - 触发条件：向 `main` 分支推送代码，或在 GitHub Actions 页面手动运行工作流。
-- 工作流先同步依赖锁文件，再使用 `npm ci` 安装锁定依赖；执行 `npm test`、`npm audit --audit-level=moderate` 和 `npm run build` 后部署。
+- 工作流先同步依赖锁文件，再使用 `npm ci` 安装锁定依赖；执行 `npm test`、`npm audit --audit-level=moderate`、`npm run build` 和 `npm run test:e2e` 后部署。
 - 例外：仅修改 `public/data/navigation.json` 时不会触发 Pages 构建；导航页面直接从 GitHub 仓库读取最新 JSON。
-- 构建命令：`npm install`、`npm run build`
+- 构建命令：`npm ci`、`npm run build`
 - 发布目录：`dist/`
 - Vite 公共基础路径：`/MyOnlineTools/`
 
