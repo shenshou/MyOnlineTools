@@ -16,15 +16,15 @@ The remaining work is primarily final acceptance, periodic performance observati
 | Area | Current baseline |
 | --- | --- |
 | Vitest | 63 tests across 10 files |
-| Playwright E2E | 9 browser tests |
+| Playwright E2E | 10 browser tests |
 | Dependency audit | `npm audit --audit-level=moderate` passes |
 | Design token guard | Passes; no raw hex/RGB or named black/white values outside token definitions |
 | Production JavaScript | 80.6 KB gzip, 8 chunks |
 | Largest JavaScript chunk | 51.6 KB gzip |
 | Production CSS | 10.9 KB gzip |
-| Lighthouse mobile Performance | 99/100 |
-| FCP / LCP | 1,464 ms / 1,657 ms |
-| TBT / CLS | 22 ms / 0.000 |
+| Lighthouse mobile Performance | 97/100 (latest run; previous sample 99/100) |
+| FCP / LCP | 1,526 ms / 2,284 ms |
+| TBT / CLS | 126 ms / 0.037 |
 | GitHub Pages deployment | Successful for the latest fully validated code snapshot |
 
 Lighthouse results are lab measurements from GitHub-hosted runners. They are useful for regression comparison, not a guarantee of real-user Core Web Vitals.
@@ -75,7 +75,7 @@ Vue 3 + Vite + Vue Router (Hash) + Pinia
 
 1. **Quality audit:** project risks and current baseline documented.
 2. **Security and data reliability:** token boundary, schema/URL validation, UTF-8 size limits, stale-write protection, and conflict recovery implemented.
-3. **Automated testing:** 63 Vitest tests and 9 Playwright E2E tests run in CI before deployment.
+3. **Automated testing:** 63 Vitest tests and 10 Playwright E2E tests run in CI before deployment.
 4. **Architecture:** navigation data, admin, editor, persistence, filters, and pure transformations separated into focused modules.
 5. **UX/UI:** shared component library established; semantic and brand tokens migrated; raw-color regression check added.
 6. **Performance:** route splitting and worker execution retained; bundle budgets and mobile Lighthouse baseline run in CI.
@@ -89,7 +89,7 @@ Accessibility is excluded from this execution scope and remains deferred.
 ### Final acceptance / ongoing maintenance
 
 - Complete a final production deployment verification for the latest commit and confirm the public Pages site loads.
-- Perform a short manual smoke check on desktop and mobile layouts; this is a visual/product check, not an accessibility audit.
+- Optionally perform a manual visual review on a real device; automated mobile viewport coverage now checks for horizontal overflow and list-view usability.
 - Observe Lighthouse metrics across several future deployments before considering a score-based CI threshold.
 - Continue replacing repeated spacing values when touching related styles; avoid broad mechanical CSS rewrites.
 

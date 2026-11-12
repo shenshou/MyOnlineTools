@@ -26,15 +26,15 @@ Measured in GitHub Actions on 2026-11-12 (Node 22, Vite production build):
 | Largest JavaScript chunk, gzip | 51.6 KB | 100 KB |
 | Total CSS, gzip | 10.9 KB | 40 KB |
 
-The latest measured mobile Lighthouse run after the brand/tool token migration was run on 2026-11-12 (GitHub Actions run 43191218516):
+The latest measured mobile Lighthouse run after the brand/tool token migration was run on 2026-11-12 (GitHub Actions run 43191833581):
 
 | Metric | Measured |
 | --- | ---: |
-| Mobile Performance score | 99/100 |
-| First Contentful Paint | 1,464 ms |
-| Largest Contentful Paint | 1,657 ms |
-| Total Blocking Time | 22 ms |
-| Cumulative Layout Shift | 0.000 |
+| Mobile Performance score | 97/100 (previous sample: 99/100) |
+| First Contentful Paint | 1,526 ms |
+| Largest Contentful Paint | 2,284 ms |
+| Total Blocking Time | 126 ms |
+| Cumulative Layout Shift | 0.037 |
 
 These are lab measurements from one GitHub-hosted runner, not guarantees of real-user Core Web Vitals.
 
@@ -44,7 +44,7 @@ CI runs a mobile Lighthouse audit against the built site served locally by Vite 
 
 The JSON report is uploaded as the `lighthouse-performance-report` workflow artifact. The CI log prints the performance score, FCP, LCP, TBT, and CLS so later runs can be compared under the same GitHub-hosted runner and simulated mobile throttling profile.
 
-This run establishes the current comparison baseline. Earlier measurements differed, which is expected for lab runs; compare repeated runs and individual metrics rather than treating one score as a precise user-experience measurement. Lab scores can vary between runner instances, so use the individual metrics and repeated runs rather than treating a single score as a precise user-experience measurement.
+This run establishes the latest comparison sample. The previous sample scored 99/100 with FCP 1,464 ms, LCP 1,657 ms, TBT 22 ms, and CLS 0.000. The variation illustrates why lab results should be compared over repeated runs rather than treated as guaranteed field performance. Lab scores can vary between runner instances, so use the individual metrics and repeated runs rather than treating a single score as a precise user-experience measurement.
 
 Run locally:
 

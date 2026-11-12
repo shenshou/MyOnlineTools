@@ -243,3 +243,19 @@ test('administrator can recover a conflicted edit by exporting, reloading, and r
   await expect(page.getByText(/已保存到 GitHub/)).toBeVisible()
   expect(writes).toBe(2)
 })
+
+
+test('navigation layout fits a narrow mobile viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/MyOnlineTools/#/navigation')
+
+  await expect(page.getByRole('heading', { name: '网址导航' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '添加网址' })).toBeVisible()
+
+  const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth)
+  expect(documentWidth).toBeLessThanOrEqual(390)
+
+  await page.getByRole('button', { name: '列表视图' }).click()
+  await expect(page.locator('.website-list')).toBeVisible()
+  await expect(page.locator('.website-list-row').first()).toBeVisible()
+})
