@@ -14,12 +14,10 @@ import { mergeNavigationData } from '../modules/navigation/operations'
 import { buildWebsiteRecord, createCategory, renameCategory as renameCategoryData, removeCategory as removeCategoryData } from '../modules/navigation/editor'
 import { useNavigationData } from '../modules/navigation/useNavigationData'
 import { useNavigationAdmin } from '../modules/navigation/useNavigationAdmin'
+import { useNavigationPersistence } from '../modules/navigation/useNavigationPersistence'
 import { useToast } from '../composables/useToast'
 import { useConfirm } from '../composables/useConfirm'
 import { Button, Input, Textarea, Select, EmptyState, Loading, Modal } from '../components/ui'
-import {
-  saveNavigationData,
-} from '../modules/navigation/github'
 
 const route = useRoute()
 const { showToast } = useToast()
@@ -67,6 +65,18 @@ function setView(mode) { if (!['card', 'list'].includes(mode)) return; viewMode.
 function setSort(mode) { if (!['custom', 'newest', 'updated', 'name-asc', 'name-desc'].includes(mode)) return; sortMode.value = mode; writePreference('mot-navigation-sort', mode) }
 function markMessage(text) { message.value = text; errorMessage.value = ''; saveConflict.value = false }
 function markError(text) { errorMessage.value = text; message.value = ''; saveConflict.value = false }
+
+const { save: persistNavigationData } = useNavigationPersistence({
+  data,
+  baseline,
+  admin,
+  busy,
+  saveConflict,
+  snapshot,
+  onMessage: markMessage,
+  onError: markError,
+  onUnauthorized: () => { showAdmin.value = true },
+})
 
 onMounted(async () => {
   await loadData()
@@ -144,25 +154,7 @@ function toggleFavorite(item) {
 }
 function openWebsite(item) { window.open(item.url, '_blank', 'noopener,noreferrer') }
 
-async function saveToGitHub() {
-  if (!admin.value) { showAdmin.value = true; return }
-  busy.value = true
-  markMessage('')
-  try {
-    const payload = { ...data.value, updatedAt: Date.now() }
-    if (!baseline.value) throw new Error('当前没有可信的数据基线，请先重新加载 GitHub 最新数据。')
-    const sha = await saveNavigationData(payload, baseline.value)
-    data.value = payload
-    baseline.value = snapshot()
-    window.dispatchEvent(new CustomEvent('mot-navigation-data-updated', { detail: payload }))
-    markMessage(`已保存到 GitHub。Commit：${sha.slice(0,7)}`)
-  } catch (error) {
-    if (error.code === 'STALE_BASELINE' || error.code === 'WRITE_CONFLICT') {
-      markError('远端数据已发生变化，本次保存已取消。本地修改仍保留在当前页面；请先导出待保存数据，再重新加载远端数据并重新应用修改。')
-      saveConflict.value = true
-    } else markError(error.message || '保存失败')
-  } finally { busy.value = false }
-}
+function saveToGitHub() { return persistNavigationData() }
 
 async function loginAdmin() {
   if (!adminTokenInput.value.trim()) { markError('请填写 Fine-grained Personal Access Token'); return }
