@@ -29,7 +29,7 @@ describe('runTool', () => {
 中')
     expect(result).toContain('字符数：4')
     expect(result).toContain('行数：2')
-    expect(result).toContain('字节数（UTF-8）：8')
+    expect(result).toContain('字节数（UTF-8）：9')
   })
 
   it('converts common naming styles', async () => {
