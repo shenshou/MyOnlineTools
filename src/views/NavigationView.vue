@@ -6,22 +6,18 @@ import {
   Download, Upload, LogIn, LogOut, Check, AlertCircle, Globe, ChevronDown, ArrowUpDown,
   Settings, FileJson, RefreshCw, Info, Bookmark, CircleHelp, ArrowUp, ArrowDown
 } from 'lucide-vue-next'
-import { normalizeNavigationData } from '../modules/navigation/validation'
 import { useNavigationFilters } from '../modules/navigation/useNavigationFilters'
 import WebsiteFavicon from '../modules/navigation/components/WebsiteFavicon.vue'
 import NavigationDetailsDrawer from '../modules/navigation/components/NavigationDetailsDrawer.vue'
-import { mergeNavigationData } from '../modules/navigation/operations'
-import { buildWebsiteRecord, createCategory, renameCategory as renameCategoryData, removeCategory as removeCategoryData } from '../modules/navigation/editor'
 import { useNavigationData } from '../modules/navigation/useNavigationData'
 import { useNavigationAdmin } from '../modules/navigation/useNavigationAdmin'
 import { useNavigationPersistence } from '../modules/navigation/useNavigationPersistence'
+import { useNavigationEditor } from '../modules/navigation/useNavigationEditor'
 import { useToast } from '../composables/useToast'
-import { useConfirm } from '../composables/useConfirm'
 import { Button, Input, Textarea, Select, EmptyState, Loading, Modal } from '../components/ui'
 
 const route = useRoute()
 const { showToast } = useToast()
-const { confirm } = useConfirm()
 const sortOptions = [{value:'custom',label:'自定义排序'},{value:'newest',label:'最近添加'},{value:'updated',label:'最近更新'},{value:'name-asc',label:'名称升序'},{value:'name-desc',label:'名称降序'}]
 const categoryIconOptions = [{value:'bot',label:'🤖 AI'},{value:'code',label:'💻 开发'},{value:'palette',label:'🎨 设计'},{value:'clapperboard',label:'🎬 娱乐'},{value:'download',label:'⬇️ 下载'},{value:'graduation-cap',label:'🎓 学习'},{value:'globe',label:'🌐 实用'},{value:'folder',label:'📁 文件夹'}]
 const { data, baseline, loading, loadError, dirty, snapshot, loadData } = useNavigationData()
@@ -41,24 +37,11 @@ function writePreference(key, value) {
 const viewMode = ref(readPreference('mot-navigation-view', 'card', ['card', 'list']))
 const sortMode = ref(readPreference('mot-navigation-sort', 'custom', ['custom', 'newest', 'updated', 'name-asc', 'name-desc']))
 const selectedWebsite = ref(null)
-const showForm = ref(false)
-const editingId = ref(null)
 const showAdmin = ref(false)
-const showImport = ref(false)
-const showCategoryManager = ref(false)
 const { admin, tokenInput: adminTokenInput, busy, restore: restoreAdminSession, login: authorizeAdmin, logout: clearAdminSession } = useNavigationAdmin()
 const message = ref('')
 const errorMessage = ref('')
 const saveConflict = ref(false)
-const form = ref(emptyForm())
-const importText = ref('')
-const importMode = ref('merge')
-const newCategory = ref('')
-const categoryEdit = ref(null)
-
-function emptyForm() {
-  return { name: '', url: '', favicon: '', description: '', notes: '', categoryId: 'other', tagsText: '', favorite: false }
-}
 const { categoryCounts, allTags, filtered } = useNavigationFilters({ data, search, selectedCategory, selectedTag, favoritesOnly, sortMode })
 function domainOf(url) { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return '' } }
 function setView(mode) { if (!['card', 'list'].includes(mode)) return; viewMode.value = mode; writePreference('mot-navigation-view', mode) }
@@ -90,60 +73,6 @@ onMounted(async () => {
   }
 })
 
-function openAdd() {
-  if (!admin.value) { showAdmin.value = true; return }
-  editingId.value = null
-  form.value = { ...emptyForm(), categoryId: selectedCategory.value !== 'all' ? selectedCategory.value : (data.value.categories[0]?.id || 'other') }
-  showForm.value = true
-}
-function openEdit(item) {
-  if (!admin.value) { showAdmin.value = true; return }
-  editingId.value = item.id
-  form.value = { ...item, tagsText: (item.tags || []).join(', ') }
-  selectedWebsite.value = null
-  showForm.value = true
-}
-async function saveForm() {
-  if (!admin.value) { showAdmin.value = true; return }
-  try {
-    const record = buildWebsiteRecord(form.value, data.value.websites, editingId.value, Date.now(), crypto.randomUUID())
-    const index = data.value.websites.findIndex(website => website.id === record.id)
-    if (index >= 0) data.value.websites[index] = record
-    else data.value.websites.push(record)
-    showForm.value = false
-    markMessage('更改已暂存在当前页面，请点击「保存到 GitHub」同步。')
-  } catch (error) { markError(error.message || '请检查输入内容') }
-}
-async function deleteWebsite(item) {
-  if (!admin.value) { showAdmin.value = true; return }
-  const ok = await confirm({ title: '删除网址', message: `确定删除「${item.name}」吗？此操作将在保存后写入仓库。`, confirmText: '删除', tone: 'danger' })
-  if (!ok) return
-  data.value.websites = data.value.websites.filter(w => w.id !== item.id)
-  selectedWebsite.value = null
-  markMessage('已删除，尚未同步到 GitHub。')
-}
-function moveWebsite(item, direction) {
-  if (!admin.value) { showAdmin.value = true; return }
-  const ordered = [...data.value.websites].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
-  const index = ordered.findIndex(w => w.id === item.id)
-  const target = ordered[index + direction]
-  if (!target) return
-  const order = item.sortOrder
-  item.sortOrder = target.sortOrder
-  target.sortOrder = order
-  item.updatedAt = Date.now()
-  target.updatedAt = Date.now()
-}
-function moveCategory(category, direction) {
-  if (!admin.value) { showAdmin.value = true; return }
-  const ordered = [...data.value.categories].sort((a, b) => a.sortOrder - b.sortOrder)
-  const index = ordered.findIndex(c => c.id === category.id)
-  const target = ordered[index + direction]
-  if (!target) return
-  const order = category.sortOrder
-  category.sortOrder = target.sortOrder
-  target.sortOrder = order
-}
 function toggleFavorite(item) {
   if (!admin.value) {
     showToast('只有管理员模式才能修改公共收藏状态。', 'warning')
@@ -153,6 +82,25 @@ function toggleFavorite(item) {
   item.updatedAt = Date.now()
 }
 function openWebsite(item) { window.open(item.url, '_blank', 'noopener,noreferrer') }
+
+const {
+  showForm, editingId, showImport, showCategoryManager, form, importText,
+  importMode, newCategory, categoryEdit,
+  openAdd, openEdit, saveForm, deleteWebsite, moveWebsite, moveCategory,
+  importData, addCategory, renameCategory, removeCategory, openImportFile,
+} = useNavigationEditor({
+  data,
+  admin,
+  showAdmin,
+  selectedCategory,
+  selectedWebsite,
+  confirm: async options => {
+    const { confirm } = useConfirm()
+    return confirm(options)
+  },
+  onMessage: markMessage,
+  onError: markError,
+})
 
 function saveToGitHub() { return persistNavigationData() }
 
@@ -170,66 +118,12 @@ function logout() {
   showAdmin.value = false
   markMessage('已退出管理员模式。')
 }
-async function importData() {
-  if (!admin.value) { showAdmin.value = true; return }
-  try {
-    const incoming = normalizeNavigationData(JSON.parse(importText.value))
-    if (importMode.value === 'replace') {
-      const ok = await confirm({ title: '覆盖导入数据', message: '覆盖导入将替换当前全部网址和分类，确定继续吗？', confirmText: '覆盖导入', tone: 'danger' })
-      if (!ok) return
-      data.value = { schemaVersion: 1, categories: incoming.categories, websites: incoming.websites, updatedAt: Date.now() }
-    } else {
-      const result = mergeNavigationData(data.value, incoming)
-      data.value = result.data
-      markMessage(`合并完成：新增 ${result.added} 条，更新 ${result.updated} 条。尚未保存到 GitHub。`)
-    }
-    showImport.value = false
-    importText.value = ''
-    if (importMode.value === 'replace') markMessage('覆盖导入完成，尚未保存到 GitHub。')
-  } catch (error) { markError(error.message || '导入失败') }
-}
 function exportData() {
   const blob = new Blob([JSON.stringify(data.value, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url; a.download = 'navigation.json'; a.click()
   URL.revokeObjectURL(url)
-}
-function addCategory() {
-  if (!admin.value) { showAdmin.value = true; return }
-  try {
-    data.value.categories = createCategory(data.value.categories, newCategory.value, `custom-${crypto.randomUUID()}`)
-    newCategory.value = ''
-    markMessage('分类已添加，尚未同步到 GitHub。')
-  } catch (error) { markError(error.message) }
-}
-function renameCategory(category) {
-  if (!admin.value) { showAdmin.value = true; return }
-  try {
-    data.value.categories = renameCategoryData(data.value.categories, category.id, categoryEdit.value?.name)
-    categoryEdit.value = null
-    markMessage('分类名称已修改，尚未同步到 GitHub。')
-  } catch (error) { markError(error.message) }
-}
-async function removeCategory(category) {
-  if (!admin.value) { showAdmin.value = true; return }
-  if (data.value.categories.length <= 1) { markError('至少保留一个分类'); return }
-  const target = data.value.categories.find(c => c.id !== category.id)
-  const ok = await confirm({ title: '删除分类', message: `删除「${category.name}」并将其中网址移动到「${target.name}」？`, confirmText: '删除分类', tone: 'danger' })
-  if (!ok) return
-  try {
-    data.value = removeCategoryData(data.value, category.id)
-    if (selectedCategory.value === category.id) selectedCategory.value = 'all'
-    markMessage('分类已删除，相关网址已移动到其他分类，尚未同步到 GitHub。')
-  } catch (error) { markError(error.message) }
-}
-function openImportFile(event) {
-  const file = event.target.files?.[0]
-  if (!file) return
-  const reader = new FileReader()
-  reader.onload = () => { importText.value = String(reader.result || ''); showImport.value = true }
-  reader.readAsText(file)
-  event.target.value = ''
 }
 function iconFor(category) {
   const icons = { bot: '🤖', code: '💻', palette: '🎨', clapperboard: '🎬', download: '⬇️', 'graduation-cap': '🎓', globe: '🌐', folder: '📁' }
