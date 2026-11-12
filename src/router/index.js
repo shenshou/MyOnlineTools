@@ -1,7 +1,8 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-import ToolView from '../views/ToolView.vue'
-import NavigationView from '../views/NavigationView.vue'
+
+const HomeView = () => import('../views/HomeView.vue')
+const ToolView = () => import('../views/ToolView.vue')
+const NavigationView = () => import('../views/NavigationView.vue')
 
 export default createRouter({
   history: createWebHashHistory(),
