@@ -1,73 +1,72 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, Search, MessageSquareText, ChevronLeft, ChevronRight, Code2, CheckCircle2, AlertTriangle, LoaderCircle } from 'lucide-vue-next'
-import { buildSignature, searchMovies, getReviews } from '../modules/javdb/api'
+import { ArrowLeft, ExternalLink, MessageSquareText, ChevronLeft, ChevronRight, Code2, CheckCircle2, AlertTriangle, LoaderCircle, Search } from 'lucide-vue-next'
+import { buildSignature, getReviews, parseMovieId } from '../modules/javdb/api'
 
 const router = useRouter()
-const number = ref('')
+const number = ref('ABF-338')
+const javdbBaseUrl = ref('https://javdb.com')
+const movieInput = ref('')
+const movieId = ref('')
 const busy = ref(false)
-const stage = ref('idle')
-const searchState = ref('idle')
 const reviewState = ref('idle')
 const error = ref('')
 const diagnostic = ref('')
 const errorResponse = ref(null)
-const searchResult = ref(null)
-const selectedMovie = ref(null)
 const reviewResult = ref(null)
 const page = ref(1)
 const keyword = ref('')
 const showRaw = ref(false)
 const requestLog = ref([])
-const reviews = computed(() => Array.isArray(reviewResult.value?.data?.data?.reviews) ? reviewResult.value.data.reviews : [])
+const searchUrl = computed(() => {
+  const base = javdbBaseUrl.value.trim().replace(/\\/$/, '')
+  return base ? `${base}/search?q=${encodeURIComponent(number.value.trim())}` : ''
+})
+const reviews = computed(() => Array.isArray(reviewResult.value?.data?.data?.reviews) ? reviewResult.value.data.data.reviews : [])
 const filteredReviews = computed(() => {
   const q = keyword.value.trim().toLocaleLowerCase()
   if (!q) return reviews.value
   return reviews.value.filter(item => [item.content, item.username].join(' ').toLocaleLowerCase().includes(q))
 })
-const movies = computed(() => Array.isArray(searchResult.value?.data?.data?.movies) ? searchResult.value.data.movies : [])
 
 function logRequest(label, result) {
   requestLog.value.unshift({ label, status: result.status, url: result.url, at: new Date().toLocaleString() })
 }
 function explainError(err) {
   if (err instanceof TypeError || /fetch|network|cors/i.test(err.message || '')) {
-    return '浏览器无法读取接口响应。常见原因是目标 API 未开放当前站点的 CORS 跨域访问；也可能是网络拦截或 DNS 问题。此时不能据此判断接口本身失效。'
+    return '浏览器无法读取评论 API 响应。可能是跨域策略、网络拦截或 DNS 问题；请查看原始错误。'
   }
   if (err.action === 'JWTVerificationError' || /請登錄帳號|请登录账号|JWTVerificationError/i.test(err.message || '')) {
-    return '上游 API 返回了业务层认证失败（JWTVerificationError）。虽然 HTTP 状态可能是 200，但这不代表搜索成功。请检查请求是否满足上游接口的认证要求。'
+    return '上游 Reviews API 返回了业务层认证失败。HTTP 200 不代表评论请求成功。'
   }
   if (err.status === 401 || err.status === 403 || /签名|signature|expired/i.test(err.message || '')) {
     return '请求已到达服务端，但签名或访问权限未通过。请检查系统时间、签名算法及接口当前的鉴权要求。'
   }
   return err.message || '请求失败，请查看原始错误信息。'
 }
-async function runSearch() {
-  if (!number.value.trim()) { error.value = '请先输入番号'; return }
-  busy.value = true; error.value = ''; diagnostic.value = ''; stage.value = 'searching'; searchState.value = 'loading'; reviewState.value = 'idle'
-  searchResult.value = null; selectedMovie.value = null; reviewResult.value = null; errorResponse.value = null; page.value = 1; requestLog.value = []
+function resolveMovieId() {
+  error.value = ''; diagnostic.value = ''; errorResponse.value = null; reviewResult.value = null
   try {
-    const result = await searchMovies(number.value.trim())
-    searchResult.value = result
-    logRequest('番号搜索', result)
-    stage.value = 'searched'; searchState.value = 'success'
-    if (!movies.value.length) diagnostic.value = '请求成功，但接口没有返回匹配影片。请确认番号格式，或查看原始响应。'
+    movieId.value = parseMovieId(movieInput.value)
+    reviewState.value = 'idle'
   } catch (err) {
-    error.value = explainError(err); diagnostic.value = err.message; errorResponse.value = err.response || null
-    stage.value = 'failed'; searchState.value = 'failed'
-    requestLog.value.unshift({ label: '番号搜索失败', status: err.status || '网络错误', url: err.url || '请求未能完成', at: new Date().toLocaleString() })
-  } finally { busy.value = false }
+    movieId.value = ''
+    error.value = '无法识别影片 ID'
+    diagnostic.value = err.message
+    reviewState.value = 'failed'
+  }
 }
-async function loadReviews(movie, targetPage = 1) {
-  selectedMovie.value = movie; busy.value = true; error.value = ''; diagnostic.value = ''; page.value = targetPage
-  stage.value = 'loading-reviews'; reviewState.value = 'loading'; reviewResult.value = null
+async function loadReviews(targetPage = 1) {
+  if (!movieId.value) { resolveMovieId(); if (!movieId.value) return }
+  busy.value = true; error.value = ''; diagnostic.value = ''; errorResponse.value = null
+  page.value = targetPage; reviewState.value = 'loading'; reviewResult.value = null
   try {
-    const result = await getReviews(movie.id, targetPage, 20)
-    reviewResult.value = result; logRequest(`Reviews 第 ${targetPage} 页`, result); stage.value = 'reviews'; reviewState.value = 'success'
-    if (!reviews.value.length) diagnostic.value = '接口请求成功，但该页没有评论数据。'
+    const result = await getReviews(movieId.value, targetPage, 20)
+    reviewResult.value = result; logRequest(`Reviews 第 ${targetPage} 页`, result); reviewState.value = 'success'
+    if (!reviews.value.length) diagnostic.value = '请求成功，但响应中没有识别到评论数组。请展开原始 JSON 检查实际数据结构。'
   } catch (err) {
-    error.value = explainError(err); diagnostic.value = err.message; errorResponse.value = err.response || null; stage.value = 'failed'; reviewState.value = 'failed'
+    error.value = explainError(err); diagnostic.value = err.message; errorResponse.value = err.response || null; reviewState.value = 'failed'
     requestLog.value.unshift({ label: `Reviews 第 ${targetPage} 页失败`, status: err.status || '网络错误', url: err.url || '请求未能完成', at: new Date().toLocaleString() })
   } finally { busy.value = false }
 }
@@ -76,7 +75,6 @@ function formatDate(value) {
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
 }
-function movieTitle(movie) { return movie.origin_title || movie.title || movie.number || `影片 #${movie.id}` }
 </script>
 
 <template>
@@ -84,41 +82,46 @@ function movieTitle(movie) { return movie.origin_title || movie.title || movie.n
     <button class="back-link" @click="router.push('/')"><ArrowLeft :size="15"/> 返回工具箱</button>
     <header class="lab-heading">
       <div class="lab-icon"><MessageSquareText :size="23"/></div>
-      <div><div class="eyebrow">INTEGRATION / API LAB</div><h1>JavDB 评论 API 验证</h1><p>独立实验页面：验证番号搜索、影片匹配、Reviews 获取和分页，不影响现有工具。</p></div>
+      <div><div class="eyebrow">INTEGRATION / API LAB</div><h1>JavDB 评论 API 验证</h1><p>通过 JavDB 官方网页定位影片，再使用影片 ID 验证 Reviews API；不依赖移动端搜索 API。</p></div>
     </header>
 
     <section class="lab-panel">
-      <div class="panel-title"><span>01 / 番号搜索</span><span class="muted">JavDB 移动端 API</span></div>
-      <form class="search-form" @submit.prevent="runSearch">
-        <input v-model="number" placeholder="输入番号，例如 ABC-123" autocomplete="off" spellcheck="false"/>
-        <button class="primary-button" :disabled="busy"><LoaderCircle v-if="busy" class="spin" :size="15"/><Search v-else :size="15"/> 开始验证</button>
-      </form>
-      <p class="hint">将使用 /api/v2/search 搜索影片。签名在浏览器本地生成，不会上传到 MyOnlineTools。</p>
+      <div class="panel-title"><span>01 / 在 JavDB 官方页面搜索</span><span class="muted">人工选择匹配影片</span></div>
+      <label class="field-label">JavDB 站点地址</label>
+      <input class="wide-input" v-model="javdbBaseUrl" placeholder="https://javdb.com" spellcheck="false"/>
+      <label class="field-label">番号</label>
+      <div class="search-form">
+        <input v-model="number" placeholder="输入番号，例如 ABF-338" autocomplete="off" spellcheck="false"/>
+        <a class="primary-button" :href="searchUrl" target="_blank" rel="noopener noreferrer" :aria-disabled="!searchUrl || !number.trim()"><Search :size="15"/> 打开官方搜索 <ExternalLink :size="13"/></a>
+      </div>
+      <p class="hint">在新标签页中确认番号对应的影片，打开影片详情页。此页面不直接抓取 JavDB HTML，避免依赖跨域代理或共享登录 Cookie。</p>
+    </section>
+
+    <section class="lab-panel">
+      <div class="panel-title"><span>02 / 提取影片 ID</span><span class="muted">支持详情页 URL 或 ID</span></div>
+      <div class="search-form">
+        <input v-model="movieInput" placeholder="粘贴影片详情页地址，例如 https://javdb.com/v/xxxx，或直接输入 ID" autocomplete="off" spellcheck="false"/>
+        <button class="secondary-button" @click="resolveMovieId">解析 ID</button>
+      </div>
+      <div v-if="movieId" class="resolved-id"><CheckCircle2 :size="15"/> 已识别影片 ID：<code>{{movieId}}</code></div>
+      <p class="hint">JAV-JHS 的实现也是从 JavDB 搜索结果卡片中的详情页链接提取 /v/{id}，然后直接请求 Reviews。</p>
     </section>
 
     <section class="status-grid">
       <div class="status-card"><span>签名生成</span><strong class="status-ok"><CheckCircle2 :size="15"/> 已就绪</strong><small>时间戳 + MD5</small></div>
-      <div class="status-card"><span>搜索状态</span><strong>{{searchState === 'success' ? '已完成' : searchState === 'failed' ? '失败' : searchState === 'loading' ? '请求中' : '待验证'}}</strong><small>/v2/search</small></div>
+      <div class="status-card"><span>影片 ID</span><strong>{{movieId ? '已识别' : '待输入'}}</strong><small>/v/{id}</small></div>
       <div class="status-card"><span>评论状态</span><strong>{{reviewState === 'success' ? '已获取' : reviewState === 'failed' ? '失败' : reviewState === 'loading' ? '请求中' : '待验证'}}</strong><small>/v1/movies/{id}/reviews</small></div>
     </section>
 
     <div v-if="error" class="alert-error"><AlertTriangle :size="17"/><div><strong>请求未通过</strong><p>{{error}}</p><small v-if="diagnostic">原始错误：{{diagnostic}}</small></div></div>
     <div v-else-if="diagnostic" class="alert-info">{{diagnostic}}</div>
 
-    <section v-if="movies.length" class="lab-panel">
-      <div class="panel-title"><span>02 / 搜索结果</span><span class="muted">{{movies.length}} 个候选结果</span></div>
-      <div class="movie-list">
-        <article v-for="movie in movies" :key="movie.id" class="movie-row">
-          <img v-if="movie.cover_url" :src="movie.cover_url" alt="" loading="lazy"/>
-          <div class="movie-copy"><strong>{{movie.number || '番号未知'}} · {{movieTitle(movie)}}</strong><small>ID: {{movie.id}} · 日期：{{movie.release_date || '未知'}} · 评分：{{movie.score ?? '暂无'}}</small></div>
-          <button class="secondary-button" @click="loadReviews(movie, 1)">获取评论 <ChevronRight :size="14"/></button>
-        </article>
+    <section v-if="movieId" class="lab-panel">
+      <div class="panel-title"><span>03 / 获取 Reviews 评论</span><span class="muted">影片 ID：{{movieId}}</span></div>
+      <div class="review-toolbar">
+        <span>当前第 {{page}} 页 · 每页 20 条</span>
+        <div class="toolbar-actions"><input v-model="keyword" placeholder="筛选当前页评论关键词…"/><button class="primary-button" :disabled="busy" @click="loadReviews(1)"><LoaderCircle v-if="busy" class="spin" :size="14"/><MessageSquareText v-else :size="14"/> 获取评论</button></div>
       </div>
-    </section>
-
-    <section v-if="selectedMovie" class="lab-panel">
-      <div class="panel-title"><span>03 / Reviews 评论</span><span class="muted">影片 ID：{{selectedMovie.id}}</span></div>
-      <div class="review-toolbar"><span>当前第 {{page}} 页 · 每页 20 条</span><input v-model="keyword" placeholder="在当前页筛选评论关键词…"/></div>
       <div v-if="reviews.length" class="review-list">
         <article v-for="(review, index) in filteredReviews" :key="review.id || index" class="review-item">
           <div class="review-meta"><strong>{{review.username || '匿名用户'}}</strong><span>{{formatDate(review.created_at)}}</span></div>
@@ -127,19 +130,19 @@ function movieTitle(movie) { return movie.origin_title || movie.title || movie.n
         </article>
         <div v-if="!filteredReviews.length" class="empty-filter">当前页没有匹配关键词的评论。</div>
       </div>
-      <div v-else class="empty-filter">当前页没有返回评论，或评论请求尚未成功。</div>
-      <div class="pagination"><button class="secondary-button" :disabled="page <= 1 || busy" @click="loadReviews(selectedMovie, page - 1)"><ChevronLeft :size="14"/> 上一页</button><span>第 {{page}} 页</span><button class="secondary-button" :disabled="reviews.length < 20 || busy" @click="loadReviews(selectedMovie, page + 1)">下一页 <ChevronRight :size="14"/></button></div>
+      <div v-else class="empty-filter">尚未获取评论，或当前页没有评论数据。</div>
+      <div class="pagination"><button class="secondary-button" :disabled="page <= 1 || busy" @click="loadReviews(page - 1)"><ChevronLeft :size="14"/> 上一页</button><span>第 {{page}} 页</span><button class="secondary-button" :disabled="reviews.length < 20 || busy" @click="loadReviews(page + 1)">下一页 <ChevronRight :size="14"/></button></div>
     </section>
 
     <section class="lab-panel diagnostics">
       <div class="panel-title"><span><Code2 :size="16"/> 请求诊断</span><button class="text-button" @click="showRaw = !showRaw">{{showRaw ? '收起' : '展开'}}原始 JSON</button></div>
       <div v-if="requestLog.length" class="request-list"><div v-for="(item, index) in requestLog" :key="index" class="request-row"><span>{{item.label}}</span><code>{{item.status}}</code><small>{{item.url}}</small></div></div>
-      <p v-else class="muted">尚未发起请求。执行搜索后，这里会记录实际请求地址和状态。</p>
-      <pre v-if="showRaw" class="raw-json">{{JSON.stringify({search: searchResult?.data || errorResponse || null, reviews: reviewResult?.data || null}, null, 2)}}</pre>
+      <p v-else class="muted">尚未发起 Reviews 请求。解析影片 ID 后即可测试。</p>
+      <pre v-if="showRaw" class="raw-json">{{JSON.stringify({reviews: reviewResult?.data || errorResponse || null}, null, 2)}}</pre>
       <div class="signature-preview"><span>本次签名格式预览</span><code>{{buildSignature().slice(0, 24)}}…</code><small>仅用于调试；签名会随时间戳更新。</small></div>
     </section>
 
-    <aside class="lab-notice"><strong>原型边界</strong><p>本页默认直接请求 JavDB API；配置 VITE_JAVDB_PROXY_URL 后会改走仓库内的 Cloudflare Worker 原型代理。代理只转发限定的搜索与评论接口，不转发登录 Cookie 或账号凭据。</p></aside>
+    <aside class="lab-notice"><strong>原型边界</strong><p>此流程不调用 /api/v2/search，也不部署 Worker。官方网页搜索由你在 JavDB 标签页中完成，影片 ID 从详情页 URL 提取；本页面只负责验证 Reviews API。当前不共享或上传 JavDB 登录 Cookie。</p></aside>
   </section>
 </template>
 
@@ -155,15 +158,19 @@ function movieTitle(movie) { return movie.origin_title || movie.title || movie.n
 .panel-title{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;font-weight:750;margin-bottom:15px}
 .panel-title>span:first-child{display:flex;align-items:center;gap:7px}
 .muted{color:var(--muted);font-size:10px;font-weight:400}
+.field-label{display:block;margin:10px 0 6px;font-size:10px;color:var(--muted)}
+.wide-input,.search-form input,.review-toolbar input{min-width:0;flex:1;border:1px solid var(--line);border-radius:var(--radius-md);padding:11px 12px;background:var(--surface-2);color:var(--text);font:12px var(--font-family);outline:0}
+.wide-input{width:100%;box-sizing:border-box}
+.wide-input:focus,.search-form input:focus,.review-toolbar input:focus{border-color:var(--primary)}
 .search-form{display:flex;gap:9px}
-.search-form input,.review-toolbar input{min-width:0;flex:1;border:1px solid var(--line);border-radius:var(--radius-md);padding:11px 12px;background:var(--surface-2);color:var(--text);font:12px var(--font-family);outline:0}
-.search-form input:focus,.review-toolbar input:focus{border-color:var(--primary)}
-.primary-button,.secondary-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:var(--radius-md);padding:9px 13px;font-size:11px;font-weight:650;white-space:nowrap}
+.primary-button,.secondary-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:var(--radius-md);padding:9px 13px;font-size:11px;font-weight:650;white-space:nowrap;text-decoration:none}
 .primary-button{border:1px solid var(--primary);background:var(--primary);color:var(--on-primary)}
 .primary-button:disabled{opacity:.55;cursor:wait}
-.secondary-button{border:1px solid var(--line);background:var(--surface);color:var(--text)}
+.secondary-button{border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
 .secondary-button:disabled{opacity:.4;cursor:not-allowed}
 .hint{margin-top:9px}
+.resolved-id{display:flex;align-items:center;gap:6px;margin-top:10px;color:var(--success);font-size:11px}
+.resolved-id code{color:var(--text);font-family:var(--font-mono)}
 .status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
 .status-card{display:grid;gap:7px;padding:13px 15px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md)}
 .status-card>span,.status-card small{font-size:10px;color:var(--muted)}
@@ -174,14 +181,10 @@ function movieTitle(movie) { return movie.origin_title || movie.title || movie.n
 .alert-error{background:var(--danger-soft);color:var(--danger)}
 .alert-error p{margin:4px 0}.alert-error small{opacity:.8}
 .alert-info{background:var(--info-soft);color:var(--info)}
-.movie-list,.review-list{display:grid}
-.movie-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
-.movie-row img{width:44px;height:58px;object-fit:cover;border-radius:5px;background:var(--surface-2)}
-.movie-copy{min-width:0;flex:1;display:grid;gap:5px}
-.movie-copy strong{font-size:11px;overflow-wrap:anywhere}
-.movie-copy small{font-size:9px;color:var(--muted)}
 .review-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;font-size:10px;color:var(--muted)}
-.review-toolbar input{max-width:260px;padding:8px 10px;font-size:10px}
+.toolbar-actions{display:flex;gap:8px;min-width:0}
+.review-toolbar input{max-width:240px;padding:8px 10px;font-size:10px}
+.review-list{display:grid}
 .review-item{padding:13px 0;border-top:1px solid var(--line)}
 .review-meta,.review-foot{display:flex;justify-content:space-between;gap:12px;font-size:10px;color:var(--muted)}
 .review-meta strong{color:var(--text);font-size:11px}
@@ -189,7 +192,7 @@ function movieTitle(movie) { return movie.origin_title || movie.title || movie.n
 .review-foot{font-size:9px}
 .empty-filter{padding:22px;text-align:center;color:var(--muted);font-size:11px}
 .pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding-top:14px;border-top:1px solid var(--line);font-size:10px;color:var(--muted)}
-.text-button{border:0;background:transparent;color:var(--primary);font-size:10px}
+.text-button{border:0;background:transparent;color:var(--primary);font-size:10px;cursor:pointer}
 .request-list{display:grid;gap:9px}
 .request-row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:9px 0;border-top:1px solid var(--line);font-size:10px}
 .request-row code{color:var(--success)}
@@ -202,5 +205,5 @@ function movieTitle(movie) { return movie.origin_title || movie.title || movie.n
 .lab-notice strong{color:var(--text)}
 .lab-notice p{margin:4px 0 0}
 .spin{animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-@media(max-width:650px){.lab-page{padding:20px 13px 40px}.lab-heading{gap:11px;margin:20px 0}.lab-heading h1{font-size:20px}.lab-heading p{font-size:10px}.lab-panel{padding:14px}.search-form{flex-direction:column}.search-form .primary-button{width:100%}.status-grid{gap:6px}.status-card{padding:10px 9px}.status-card strong{font-size:10px}.movie-row{gap:8px}.movie-copy strong{font-size:10px}.movie-row .secondary-button{padding:7px 8px;font-size:10px}.review-toolbar{align-items:flex-start;flex-direction:column}.review-toolbar input{max-width:none;width:100%}.review-meta{flex-direction:column;gap:4px}}
+@media(max-width:650px){.lab-page{padding:20px 13px 40px}.lab-heading{gap:11px;margin:20px 0}.lab-heading h1{font-size:20px}.lab-heading p{font-size:10px}.lab-panel{padding:14px}.search-form{flex-direction:column}.search-form>*{width:100%;box-sizing:border-box}.status-grid{gap:6px}.status-card{padding:10px 9px}.status-card strong{font-size:10px}.review-toolbar{align-items:flex-start;flex-direction:column}.toolbar-actions{width:100%;flex-direction:column}.review-toolbar input{max-width:none;width:100%;box-sizing:border-box}}
 </style>
