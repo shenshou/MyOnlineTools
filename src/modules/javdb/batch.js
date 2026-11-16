@@ -29,10 +29,10 @@ export function filterReviewsByKeywords(reviews, keywords) {
 
 export function uniqueReviews(reviews) {
   const seen = new Set()
-  return reviews.filter((review, index) => {
+  return reviews.filter(review => {
     const key = review?.id != null
       ? String(review.id)
-      : `${review?.username || ''}| ${review?.created_at || ''}| ${review?.content || ''}|${index}`
+      : `${review?.username || ''}| ${review?.created_at || ''}| ${review?.content || ''}`
     if (seen.has(key)) return false
     seen.add(key)
     return true
