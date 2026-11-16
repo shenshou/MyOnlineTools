@@ -3,6 +3,7 @@ import {
   filterReviewsByKeywords,
   getReviewItems,
   parseKeywords,
+  splitTextByKeywords,
   uniqueReviews,
 } from './batch'
 
@@ -44,5 +45,26 @@ describe('review date filtering', () => {
       { id: 4, content: 'beautiful but date unknown' },
     ]
     expect(filterReviews(reviews, ['beautiful'], '2026-01-01').map(review => review.id)).toEqual([2])
+  })
+})
+
+
+describe('keyword highlighting', () => {
+  it('splits comment text into case-insensitive highlighted matches', () => {
+    expect(splitTextByKeywords('A BEAUTIFUL story about beautiful scenes', ['beautiful'])).toEqual([
+      { text: 'A ', matched: false },
+      { text: 'BEAUTIFUL', matched: true },
+      { text: ' story about ', matched: false },
+      { text: 'beautiful', matched: true },
+      { text: ' scenes', matched: false },
+    ])
+  })
+
+  it('safely supports keywords containing regular expression characters', () => {
+    expect(splitTextByKeywords('Use C++ in this example', ['C++'])).toEqual([
+      { text: 'Use ', matched: false },
+      { text: 'C++', matched: true },
+      { text: ' in this example', matched: false },
+    ])
   })
 })

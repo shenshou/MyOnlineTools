@@ -5,23 +5,26 @@ import { useRouter } from 'vue-router'
 import { Button, Textarea, Select } from '../components/ui'
 import { getReviews } from '../modules/javdb/api'
 import { searchJavDbMovies, isExactMovieCode, parseMovieNumbers } from '../modules/javdb/search'
-import { filterReviews, getReviewItems, parseKeywords, uniqueReviews } from '../modules/javdb/batch'
+import { filterReviews, getReviewItems, parseKeywords, splitTextByKeywords, uniqueReviews } from '../modules/javdb/batch'
 
 const router = useRouter()
 const numbersInput = ref('')
-const mode = ref('all')
+const mode = ref('keywords')
 const keywordsInput = ref('')
 const sinceDate = ref('')
-const expandedTaskIds = ref([])
-const requestInterval = ref('3000')
+const activeTaskId = ref('')
+const requestInterval = ref('5000')
 const tasks = ref([])
 const isRunning = ref(false)
 const isPaused = ref(false)
 const pageError = ref('')
 const gapOptions = [
   { value: '2000', label: '2 秒（较快）' },
-  { value: '3000', label: '3 秒（默认，较保守）' },
-  { value: '5000', label: '5 秒（更保守）' },
+  { value: '3000', label: '3 秒' },
+  { value: '5000', label: '5 秒（默认）' },
+  { value: '8000', label: '8 秒' },
+  { value: '10000', label: '10 秒' },
+  { value: '15000', label: '15 秒（更保守）' },
 ]
 const keywordList = computed(() => parseKeywords(keywordsInput.value))
 const rawNumbers = computed(() => String(numbersInput.value || '').split(/[\s,，;；]+/).map(value => value.trim()).filter(Boolean))
@@ -34,6 +37,7 @@ const finishedCount = computed(() => tasks.value.filter(task => ['completed', 'f
 const completedCount = computed(() => tasks.value.filter(task => task.status === 'completed').length)
 const totalReviews = computed(() => tasks.value.reduce((sum, task) => sum + task.reviews.length, 0))
 const displayedReviews = computed(() => tasks.value.reduce((sum, task) => sum + visibleReviews(task).length, 0))
+const activeTask = computed(() => tasks.value.find(task => task.id === activeTaskId.value) || null)
 
 let activeController = null
 let cancelled = false
@@ -168,7 +172,7 @@ async function startQueue() {
   }
 
   pageError.value = ''
-  expandedTaskIds.value = []
+  activeTaskId.value = ''
   tasks.value = parsedNumbers.value.map((number, index) => ({
     id: `${number}-${index}`,
     number,
@@ -182,6 +186,7 @@ async function startQueue() {
     warning: '',
   }))
 
+  activeTaskId.value = tasks.value[0]?.id || ''
   isRunning.value = true
   isPaused.value = false
   cancelled = false
@@ -278,17 +283,14 @@ function reviewCountForTask(task) {
   return visibleReviews(task).length
 }
 
-function setTaskExpanded(taskId, expanded) {
-  const ids = new Set(expandedTaskIds.value)
-  if (expanded) ids.add(taskId)
-  else ids.delete(taskId)
-  expandedTaskIds.value = [...ids]
+function selectTask(task) {
+  activeTaskId.value = task.id
 }
 
-function setAllTasksExpanded(expanded) {
-  expandedTaskIds.value = expanded
-    ? tasks.value.filter(task => task.status === 'completed').map(task => task.id)
-    : []
+function highlightParts(value) {
+  return mode.value === 'keywords'
+    ? splitTextByKeywords(value, keywordList.value)
+    : [{ text: String(value || ''), matched: false }]
 }
 
 function statusLabel(status) {
@@ -391,11 +393,8 @@ onBeforeUnmount(() => {
         <span class="muted">{{ finishedCount }} / {{ tasks.length }} 项已处理</span>
       </div>
       <div class="result-toolbar">
-        <span>按番号分组 · {{ displayedReviews }} 条当前展示评论</span>
-        <div>
-          <button type="button" @click="setAllTasksExpanded(true)">全部展开</button>
-          <button type="button" @click="setAllTasksExpanded(false)">全部收起</button>
-        </div>
+        <span>选择番号查看评论 · {{ displayedReviews }} 条符合当前筛选条件</span>
+        <span>评论详情一次只展示一个番号，避免页面过长</span>
       </div>
       <div class="progress-track"><div class="progress-value" :style="{ width: `${tasks.length ? finishedCount / tasks.length * 100 : 0}%` }"></div></div>
       <div class="summary-grid">
@@ -409,13 +408,16 @@ onBeforeUnmount(() => {
           <div class="task-title">
             <strong>{{ task.number }}</strong>
             <span class="task-status" :class="task.status">{{ statusLabel(task.status) }}</span>
+            <span v-if="task.status === 'completed'" class="task-review-count">{{ reviewCountForTask(task) }} 条匹配</span>
           </div>
-          <Button
-            v-if="['failed', 'not-found'].includes(task.status) && !isRunning"
-            size="sm"
-            variant="secondary"
-            @click="retryTask(task)"
-          ><RotateCcw :size="13" /> 重试</Button>
+          <div class="task-actions">
+            <Button v-if="task.status === 'completed'" size="sm" :variant="activeTaskId === task.id ? 'primary' : 'secondary'" @click="selectTask(task)">
+              {{ activeTaskId === task.id ? '正在查看' : '查看评论' }}
+            </Button>
+            <Button v-if="['failed', 'not-found'].includes(task.status) && !isRunning" size="sm" variant="secondary" @click="retryTask(task)">
+              <RotateCcw :size="13" /> 重试
+            </Button>
+          </div>
         </div>
 
         <div v-if="task.movie" class="matched-movie">
@@ -438,26 +440,23 @@ onBeforeUnmount(() => {
           <a v-for="candidate in task.suggestions" :key="candidate.movieId" :href="candidate.url" target="_blank" rel="noopener noreferrer">{{ candidate.title }}</a>
         </div>
 
-        <details
-          v-if="task.status === 'completed'"
-          class="review-details"
-          :open="expandedTaskIds.includes(task.id)"
-          @toggle="setTaskExpanded(task.id, $event.target.open)"
-        >
-          <summary>
-            <span>评论列表 · 已获取 {{ task.reviews.length }} 条 · {{ task.pagesFetched }} 页</span>
-            <strong>{{ mode === 'keywords' ? '匹配 ' : '展示 ' }}{{ reviewCountForTask(task) }} 条</strong>
-          </summary>
-          <div v-if="visibleReviews(task).length" class="review-list">
-            <article v-for="(review, index) in visibleReviews(task)" :key="review.id || index" class="review-item">
-              <div class="review-meta"><strong>{{ review.username || '匿名用户' }}</strong><span>{{ formatDate(review.created_at) }}</span></div>
-              <p>{{ review.content || '（空评论）' }}</p>
-              <div class="review-foot"><span>评分：{{ review.score ?? '未评分' }}</span><span>赞：{{ review.likes_count ?? 0 }}</span></div>
-            </article>
-          </div>
-          <div v-else class="empty-result">{{ mode === 'keywords' ? '没有评论符合当前关键词和日期条件。' : '该影片暂无评论。' }}</div>
-        </details>
+
       </article>
+
+      <section v-if="activeTask?.status === 'completed'" class="selected-reviews">
+        <div class="selected-reviews-heading">
+          <div><strong>{{ activeTask.number }} · 评论列表</strong><span>已获取 {{ activeTask.reviews.length }} 条 · {{ activeTask.pagesFetched }} 页</span></div>
+          <strong>{{ mode === 'keywords' ? '匹配 ' : '展示 ' }}{{ reviewCountForTask(activeTask) }} 条</strong>
+        </div>
+        <div v-if="visibleReviews(activeTask).length" class="review-list">
+          <article v-for="(review, index) in visibleReviews(activeTask)" :key="review.id || index" class="review-item">
+            <div class="review-meta"><strong>{{ review.username || '匿名用户' }}</strong><span>{{ formatDate(review.created_at) }}</span></div>
+            <p><template v-for="(part, partIndex) in highlightParts(review.content || '（空评论）')" :key="partIndex"><mark v-if="part.matched" class="keyword-highlight">{{ part.text }}</mark><span v-else>{{ part.text }}</span></template></p>
+            <div class="review-foot"><span>评分：{{ review.score ?? '未评分' }}</span><span>赞：{{ review.likes_count ?? 0 }}</span></div>
+          </article>
+        </div>
+        <div v-else class="empty-result">{{ mode === 'keywords' ? '没有评论符合当前关键词和日期条件。' : '该影片暂无评论。' }}</div>
+      </section>
     </section>
 
     <aside class="footnote">
@@ -500,15 +499,17 @@ onBeforeUnmount(() => {
 .result-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:12px 0;color:var(--muted);font-size:10px}
 .result-toolbar>div{display:flex;gap:6px}
 .result-toolbar button{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);padding:5px 8px;font-size:10px;cursor:pointer}
-.review-details{margin-top:12px;border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden}
-.review-details summary{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;background:var(--surface-2);font-size:10px;cursor:pointer;list-style:none}
-.review-details summary::-webkit-details-marker{display:none}
-.review-details summary::after{content:'⌄';color:var(--muted);font-size:14px}
-.review-details[open] summary::after{content:'⌃'}
-.review-details summary strong{margin-left:auto;color:var(--primary);white-space:nowrap}
-.review-details .review-list{padding:0 12px}
+.selected-reviews .review-list{padding:0 12px}
 .task-heading,.task-title{display:flex;align-items:center;gap:9px}
 .task-heading{justify-content:space-between}
+.task-actions{display:flex;align-items:center;gap:6px}
+.task-review-count{font-size:9px;color:var(--muted)}
+.selected-reviews{margin-top:14px;border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden}
+.selected-reviews-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;background:var(--surface-2);font-size:11px}
+.selected-reviews-heading>div{display:grid;gap:4px}
+.selected-reviews-heading span{font-size:9px;color:var(--muted)}
+.selected-reviews-heading>strong{color:var(--primary);white-space:nowrap}
+.keyword-highlight{background:var(--warning-soft);color:var(--text);border-radius:3px;padding:0 2px;font-weight:750}
 .task-title strong{font-size:13px}
 .task-status{padding:3px 7px;border-radius:5px;background:var(--surface-2);font-size:9px;color:var(--muted)}
 .task-status.completed{color:var(--success);background:var(--success-soft)}
