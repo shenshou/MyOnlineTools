@@ -9,7 +9,7 @@ import {
 
 describe('JavDB search parsing', () => {
   it('normalizes and deduplicates a batch of movie numbers', () => {
-    expect(parseMovieNumbers('ABF-338, abf338\\nSSIS-123；IPX_456')).toEqual([
+    expect(parseMovieNumbers('ABF-338, abf338\nSSIS-123；IPX_456')).toEqual([
       'ABF-338',
       'SSIS-123',
       'IPX_456',
