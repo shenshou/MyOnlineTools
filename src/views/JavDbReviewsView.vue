@@ -388,7 +388,7 @@ onBeforeUnmount(() => {
               v-model="sinceDate"
               type="date"
               :disabled="isRunning"
-              @click="openDatePicker"
+              @click.stop="openDatePicker"
             />
             <span class="date-input-hint" aria-hidden="true">点击任意位置选择日期</span>
           </div>
