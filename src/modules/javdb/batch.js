@@ -10,7 +10,7 @@ export function getReviewItems(result) {
 export function parseKeywords(input) {
   return [...new Set(
     String(input || '')
-      .split(/[\\r\\n,，;；]+/)
+      .split(/[\r\n,，;；]+/)
       .map(value => value.trim().toLocaleLowerCase())
       .filter(Boolean),
   )]
