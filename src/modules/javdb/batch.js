@@ -42,7 +42,7 @@ export function uniqueReviews(reviews) {
 export function getReviewTimestamp(review) {
   const value = review?.created_at ?? review?.createdAt ?? review?.created
   if (value == null || value === '') return null
-  const numeric = typeof value === 'number' || /^\\d+(?:\\.\\d+)?$/.test(String(value))
+  const numeric = typeof value === 'number' || /^\d+(?:\.\d+)?$/.test(String(value))
   const timestamp = numeric
     ? Number(value) * (Number(value) < 1e12 ? 1000 : 1)
     : Date.parse(value)
