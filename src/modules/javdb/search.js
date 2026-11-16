@@ -52,7 +52,7 @@ export function parseJavDbSearchResults(html, Parser = globalThis.DOMParser) {
       return []
     }
     const match = url.pathname.match(/^\/v\/([a-zA-Z0-9]+)(?:\/|$)/)
-    if (!match || seen.has(match[1])) return []
+    if (url.origin !== new URL(JAVDB_BASE_URL).origin || !match || seen.has(match[1])) return []
     seen.add(match[1])
 
     const title = anchor.querySelector('.video-title')?.textContent?.trim()
