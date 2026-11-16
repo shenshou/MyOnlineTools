@@ -12,6 +12,7 @@ const searchState = ref('idle')
 const reviewState = ref('idle')
 const error = ref('')
 const diagnostic = ref('')
+const errorResponse = ref(null)
 const searchResult = ref(null)
 const selectedMovie = ref(null)
 const reviewResult = ref(null)
@@ -34,6 +35,9 @@ function explainError(err) {
   if (err instanceof TypeError || /fetch|network|cors/i.test(err.message || '')) {
     return '浏览器无法读取接口响应。常见原因是目标 API 未开放当前站点的 CORS 跨域访问；也可能是网络拦截或 DNS 问题。此时不能据此判断接口本身失效。'
   }
+  if (err.action === 'JWTVerificationError' || /請登錄帳號|请登录账号|JWTVerificationError/i.test(err.message || '')) {
+    return '上游 API 返回了业务层认证失败（JWTVerificationError）。虽然 HTTP 状态可能是 200，但这不代表搜索成功。请检查请求是否满足上游接口的认证要求。'
+  }
   if (err.status === 401 || err.status === 403 || /签名|signature|expired/i.test(err.message || '')) {
     return '请求已到达服务端，但签名或访问权限未通过。请检查系统时间、签名算法及接口当前的鉴权要求。'
   }
@@ -42,7 +46,7 @@ function explainError(err) {
 async function runSearch() {
   if (!number.value.trim()) { error.value = '请先输入番号'; return }
   busy.value = true; error.value = ''; diagnostic.value = ''; stage.value = 'searching'; searchState.value = 'loading'; reviewState.value = 'idle'
-  searchResult.value = null; selectedMovie.value = null; reviewResult.value = null; page.value = 1; requestLog.value = []
+  searchResult.value = null; selectedMovie.value = null; reviewResult.value = null; errorResponse.value = null; page.value = 1; requestLog.value = []
   try {
     const result = await searchMovies(number.value.trim())
     searchResult.value = result
@@ -50,7 +54,7 @@ async function runSearch() {
     stage.value = 'searched'; searchState.value = 'success'
     if (!movies.value.length) diagnostic.value = '请求成功，但接口没有返回匹配影片。请确认番号格式，或查看原始响应。'
   } catch (err) {
-    error.value = explainError(err); diagnostic.value = err.message
+    error.value = explainError(err); diagnostic.value = err.message; errorResponse.value = err.response || null
     stage.value = 'failed'; searchState.value = 'failed'
     requestLog.value.unshift({ label: '番号搜索失败', status: err.status || '网络错误', url: err.url || '请求未能完成', at: new Date().toLocaleString() })
   } finally { busy.value = false }
@@ -63,7 +67,7 @@ async function loadReviews(movie, targetPage = 1) {
     reviewResult.value = result; logRequest(`Reviews 第 ${targetPage} 页`, result); stage.value = 'reviews'; reviewState.value = 'success'
     if (!reviews.value.length) diagnostic.value = '接口请求成功，但该页没有评论数据。'
   } catch (err) {
-    error.value = explainError(err); diagnostic.value = err.message; stage.value = 'failed'; reviewState.value = 'failed'
+    error.value = explainError(err); diagnostic.value = err.message; errorResponse.value = err.response || null; stage.value = 'failed'; reviewState.value = 'failed'
     requestLog.value.unshift({ label: `Reviews 第 ${targetPage} 页失败`, status: err.status || '网络错误', url: err.url || '请求未能完成', at: new Date().toLocaleString() })
   } finally { busy.value = false }
 }
@@ -131,11 +135,11 @@ function movieTitle(movie) { return movie.origin_title || movie.title || movie.n
       <div class="panel-title"><span><Code2 :size="16"/> 请求诊断</span><button class="text-button" @click="showRaw = !showRaw">{{showRaw ? '收起' : '展开'}}原始 JSON</button></div>
       <div v-if="requestLog.length" class="request-list"><div v-for="(item, index) in requestLog" :key="index" class="request-row"><span>{{item.label}}</span><code>{{item.status}}</code><small>{{item.url}}</small></div></div>
       <p v-else class="muted">尚未发起请求。执行搜索后，这里会记录实际请求地址和状态。</p>
-      <pre v-if="showRaw" class="raw-json">{{JSON.stringify({search: searchResult?.data || null, reviews: reviewResult?.data || null}, null, 2)}}</pre>
+      <pre v-if="showRaw" class="raw-json">{{JSON.stringify({search: searchResult?.data || errorResponse || null, reviews: reviewResult?.data || null}, null, 2)}}</pre>
       <div class="signature-preview"><span>本次签名格式预览</span><code>{{buildSignature().slice(0, 24)}}…</code><small>仅用于调试；签名会随时间戳更新。</small></div>
     </section>
 
-    <aside class="lab-notice"><strong>原型边界</strong><p>本页只从浏览器直接请求 JavDB API。若浏览器因 CORS 拦截，原型会明确显示网络层错误；这不代表 API 本身不可用。届时再单独评估 Cloudflare Worker 代理，不会提前引入后端。</p></aside>
+    <aside class="lab-notice"><strong>原型边界</strong><p>本页默认直接请求 JavDB API；配置 VITE_JAVDB_PROXY_URL 后会改走仓库内的 Cloudflare Worker 原型代理。代理只转发限定的搜索与评论接口，不转发登录 Cookie 或账号凭据。</p></aside>
   </section>
 </template>
 
