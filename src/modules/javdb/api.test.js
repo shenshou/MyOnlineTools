@@ -78,7 +78,7 @@ describe('JavDB API client', () => {
 
     expect(new URL(url).pathname).toBe('/api/v1/movies/movie-987/magnets')
     expect(options.headers.jdsignature).toMatch(/^\d+\.lpw6vgqzsp\.[a-f0-9]{32}$/)
-    expect(options.credentials).toBe('include')
+    expect(options.credentials).toBe('omit')
   })
 })
 
