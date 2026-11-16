@@ -4,7 +4,7 @@ import { ArrowLeft, Search, Play, Pause, Square, RotateCcw, ExternalLink, Messag
 import { useRouter } from 'vue-router'
 import { Button, Textarea, Select } from '../components/ui'
 import { getReviews } from '../modules/javdb/api'
-import { searchJavDbMovies, isExactMovieCode } from '../modules/javdb/search'
+import { searchJavDbMovies, isExactMovieCode, parseMovieNumbers } from '../modules/javdb/search'
 import { filterReviewsByKeywords, getReviewItems, parseKeywords, uniqueReviews } from '../modules/javdb/batch'
 
 const router = useRouter()
@@ -22,12 +22,11 @@ const gapOptions = [
   { value: '5000', label: '5 秒（更保守）' },
 ]
 const keywordList = computed(() => parseKeywords(keywordsInput.value))
-const parsedNumbers = computed(() => String(numbersInput.value || '')
-  .split(/[\\s,，;；]+/)
-  .map(value => value.trim().toUpperCase())
-  .filter(Boolean))
-const uniqueNumberCount = computed(() => new Set(parsedNumbers.value).size)
-const validInput = computed(() => uniqueNumberCount.value > 0 && parsedNumbers.value.every(value => /^[A-Z0-9]+(?:[-_][A-Z0-9]+)*$/.test(value)))
+const rawNumbers = computed(() => String(numbersInput.value || '').split(/[\\s,，;；]+/).map(value => value.trim()).filter(Boolean))
+const parsedNumbers = computed(() => parseMovieNumbers(numbersInput.value))
+const invalidNumbers = computed(() => rawNumbers.value.filter(value => !/^[A-Z0-9]+(?:[-_][A-Z0-9]+)*$/i.test(value)))
+const uniqueNumberCount = computed(() => parsedNumbers.value.length)
+const validInput = computed(() => uniqueNumberCount.value > 0 && invalidNumbers.value.length === 0)
 const canStart = computed(() => !isRunning.value && validInput.value && (mode.value !== 'keywords' || keywordList.value.length > 0))
 const finishedCount = computed(() => tasks.value.filter(task => ['completed', 'failed', 'not-found', 'ambiguous', 'cancelled'].includes(task.status)).length)
 const completedCount = computed(() => tasks.value.filter(task => task.status === 'completed').length)
@@ -167,7 +166,7 @@ async function startQueue() {
   }
 
   pageError.value = ''
-  tasks.value = [...new Set(parsedNumbers.value)].map((number, index) => ({
+  tasks.value = parsedNumbers.value.map((number, index) => ({
     id: `${number}-${index}`,
     number,
     status: 'queued',
@@ -322,8 +321,8 @@ onBeforeUnmount(() => {
       />
       <div class="input-summary">
         <span>识别到 {{ uniqueNumberCount }} 个不同番号</span>
-        <span v-if="parsedNumbers.length !== uniqueNumberCount">已自动去重</span>
-        <span v-if="!validInput && parsedNumbers.length">存在格式不正确的番号</span>
+        <span v-if="rawNumbers.length > uniqueNumberCount">已自动去重</span>
+        <span v-if="invalidNumbers.length">格式不正确：{{ invalidNumbers.join("、") }}</span>
       </div>
     </section>
 
