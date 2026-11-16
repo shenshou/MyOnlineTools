@@ -1,13 +1,15 @@
 <script setup>
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { ArrowLeft, Play, Pause, Square, RotateCcw, ExternalLink, MessageSquareText, AlertTriangle, Clock3, Film } from 'lucide-vue-next'
+import { ArrowLeft, Play, Pause, Square, RotateCcw, ExternalLink, MessageSquareText, AlertTriangle, Clock3, Film, Copy } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { Button, Textarea, Select } from '../components/ui'
-import { getReviews } from '../modules/javdb/api'
+import { getMagnets, getReviews } from '../modules/javdb/api'
 import { searchJavDbMovies, isExactMovieCode, parseMovieNumbers } from '../modules/javdb/search'
 import { filterReviews, getReviewItems, parseKeywords, splitTextByKeywords, uniqueReviews } from '../modules/javdb/batch'
+import { useToast } from '../composables/useToast'
 
 const router = useRouter()
+const { showToast } = useToast()
 const numbersInput = ref('')
 const mode = ref('keywords')
 const keywordsInput = ref('')
@@ -103,6 +105,22 @@ function setTaskError(task, error, stage) {
   task.error = `${stage}失败：${error?.message || '未知错误'}`
 }
 
+async function fetchTaskMagnets(task, movie) {
+  task.magnets = []
+  task.magnetsStatus = 'loading'
+  task.magnetsError = ''
+
+  try {
+    await beforeRequest()
+    task.magnets = await getMagnets(movie.movieId, { signal: activeController.signal })
+    task.magnetsStatus = 'success'
+  } catch (error) {
+    if (error?.name === 'AbortError' || cancelled) throw error
+    task.magnetsStatus = 'failed'
+    task.magnetsError = error?.message || '未知错误'
+  }
+}
+
 async function fetchAllReviews(task, movie) {
   const collected = []
   const limit = 20
@@ -137,6 +155,9 @@ async function processTask(task) {
   task.warning = ''
   task.movie = null
   task.candidates = []
+  task.magnets = []
+  task.magnetsStatus = 'idle'
+  task.magnetsError = ''
   task.reviews = []
   task.pagesFetched = 0
 
@@ -160,6 +181,7 @@ async function processTask(task) {
 
   task.movie = exactMatches[0]
   task.status = 'fetching'
+  await fetchTaskMagnets(task, task.movie)
   await fetchAllReviews(task, task.movie)
   task.status = 'completed'
 }
@@ -181,6 +203,9 @@ async function startQueue() {
     movie: null,
     candidates: [],
     suggestions: [],
+    magnets: [],
+    magnetsStatus: 'idle',
+    magnetsError: '',
     reviews: [],
     pagesFetched: 0,
     error: '',
@@ -258,6 +283,9 @@ async function fetchSelectedCandidate(task, candidate) {
   task.status = 'fetching'
   task.error = ''
   task.warning = ''
+  task.magnets = []
+  task.magnetsStatus = 'idle'
+  task.magnetsError = ''
   task.reviews = []
   task.pagesFetched = 0
   isRunning.value = true
@@ -271,6 +299,38 @@ async function fetchSelectedCandidate(task, candidate) {
   } finally {
     isRunning.value = false
     activeController = null
+  }
+}
+
+function magnetUri(magnet) {
+  return magnet?.hash ? `magnet:?xt=urn:btih:${magnet.hash}` : ''
+}
+
+async function copyMagnet(magnet) {
+  const value = magnetUri(magnet)
+  if (!value) {
+    showToast('这条磁链缺少有效哈希值', 'warning')
+    return
+  }
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value)
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = value
+      textarea.setAttribute('readonly', '')
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      const copied = document.execCommand('copy')
+      textarea.remove()
+      if (!copied) throw new Error('浏览器未能完成复制')
+    }
+    showToast('磁链已复制', 'success')
+  } catch {
+    showToast('复制失败，请检查浏览器剪贴板权限', 'error')
   }
 }
 
@@ -447,6 +507,32 @@ onBeforeUnmount(() => {
           <code>{{ task.movie.movieId }}</code>
         </div>
 
+        <section v-if="task.movie" class="task-magnets">
+          <div class="task-magnets-heading">
+            <strong>磁链资源</strong>
+            <span v-if="task.magnetsStatus === 'loading'">正在获取…</span>
+            <span v-else-if="task.magnetsStatus === 'success'">找到 {{ task.magnets.length }} 条</span>
+            <span v-else-if="task.magnetsStatus === 'failed'">获取失败</span>
+          </div>
+          <p v-if="task.magnetsStatus === 'failed'" class="magnet-empty">磁链接口暂时不可用：{{ task.magnetsError }}。评论获取不受影响。</p>
+          <p v-else-if="task.magnetsStatus === 'success' && !task.magnets.length" class="magnet-empty">该影片暂无磁链资源。</p>
+          <div v-for="(magnet, magnetIndex) in task.magnets" :key="magnet.hash || magnetIndex" class="magnet-row">
+            <div class="magnet-info">
+              <strong>{{ magnet.name || '未命名资源' }}</strong>
+              <div class="magnet-meta">
+                <span v-if="Number.isFinite(Number(magnet.size))">{{ (Number(magnet.size) / 1024).toFixed(2) }} GB</span>
+                <span v-if="magnet.files_count">{{ magnet.files_count }} 个文件</span>
+                <span v-if="magnet.hd">高清</span>
+                <span v-if="magnet.cnsub">含字幕</span>
+                <span v-if="magnet.created_at">{{ formatDate(magnet.created_at) }}</span>
+              </div>
+            </div>
+            <Button size="sm" variant="secondary" :disabled="!magnet.hash" @click="copyMagnet(magnet)">
+              <Copy :size="13" /> 复制磁链
+            </Button>
+          </div>
+        </section>
+
         <p v-if="task.error" class="task-error"><AlertTriangle :size="13" />{{ task.error }}</p>
         <p v-if="task.warning" class="task-warning">{{ task.warning }}</p>
 
@@ -482,7 +568,7 @@ onBeforeUnmount(() => {
 
     <aside class="footnote">
       <strong>处理说明</strong>
-      <p>程序直接读取 JavDB 官方搜索页面，从精确匹配的影片详情链接提取 movieId，再调用已验证的 Reviews API。评论按分页顺序逐页获取；关键词筛选在本地完成。当前不使用 Cloudflare Worker，也不上传 JavDB 登录 Cookie。</p>
+      <p>程序从 JavDB 官方搜索结果提取影片 movieId，再分别调用 Reviews 和磁链 API；评论按分页顺序获取，磁链提供一键复制。关键词筛选在本地完成。当前不使用 Cloudflare Worker，也不上传 JavDB 登录 Cookie。</p>
     </aside>
   </section>
 </template>
@@ -548,6 +634,15 @@ onBeforeUnmount(() => {
 .matched-movie strong{font-size:10px;line-height:1.6}
 .matched-movie a{display:flex;align-items:center;gap:4px;color:var(--primary);text-decoration:none;font-size:9px}
 .matched-movie code{font-size:10px;color:var(--muted)}
+.task-magnets{margin:10px 0 0 24px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-2)}
+.task-magnets-heading{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:10px}
+.task-magnets-heading span,.magnet-empty{color:var(--muted);font-size:9px}
+.magnet-empty{margin:4px 0;line-height:1.6}
+.magnet-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line)}
+.magnet-info{display:grid;gap:5px;min-width:0}
+.magnet-info>strong{font-size:10px;line-height:1.6;overflow-wrap:anywhere}
+.magnet-meta{display:flex;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:9px}
+@media(max-width:650px){.task-magnets{margin-left:0}.magnet-row{align-items:flex-start;flex-direction:column}}
 .task-error{margin:9px 0 0}
 .task-warning{font-size:10px;color:var(--warning)}
 .candidate-list,.suggestion-list{display:grid;gap:8px;margin-top:10px}
