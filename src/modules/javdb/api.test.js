@@ -55,7 +55,7 @@ describe('JavDB API client', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await getReviews(987, 2, 20)
-    const [url] = fetchMock.mock.calls[0]
+    const [url, options] = fetchMock.mock.calls[0]
 
     expect(new URL(url).pathname).toBe('/api/v1/movies/987/reviews')
     expect(new URL(url).searchParams.get('page')).toBe('2')
