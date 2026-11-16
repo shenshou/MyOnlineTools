@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import { Button, Textarea, Select } from '../components/ui'
 import { getReviews } from '../modules/javdb/api'
 import { searchJavDbMovies, isExactMovieCode, parseMovieNumbers } from '../modules/javdb/search'
-import { filterReviews, getReviewItems, parseKeywords, uniqueReviews } from '../modules/javdb/batch'
+import { filterReviews, getReviewItems, parseKeywords, splitTextByKeywords, uniqueReviews } from '../modules/javdb/batch'
 
 const router = useRouter()
 const numbersInput = ref('')
@@ -288,28 +288,9 @@ function selectTask(task) {
 }
 
 function highlightParts(value) {
-  const text = String(value || '')
-  const terms = keywordList.value
-    .filter(Boolean)
-    .sort((a, b) => b.length - a.length)
-    .map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\function setTaskExpanded(taskId, expanded) {
-  const ids = new Set(expandedTaskIds.value)
-  if (expanded) ids.add(taskId)
-  else ids.delete(taskId)
-  expandedTaskIds.value = [...ids]
-}
-
-function setAllTasksExpanded(expanded) {
-  expandedTaskIds.value = expanded
-    ? tasks.value.filter(task => task.status === 'completed').map(task => task.id)
-    : []
-}'))
-  if (mode.value !== 'keywords' || !terms.length || !text) return [{ text, matched: false }]
-  const pattern = new RegExp(`(${terms.join('|')})`, 'gi')
-  return text.split(pattern).filter(part => part !== '').map((part, index) => ({
-    text: part,
-    matched: index % 2 === 1,
-  }))
+  return mode.value === 'keywords'
+    ? splitTextByKeywords(value, keywordList.value)
+    : [{ text: String(value || ''), matched: false }]
 }
 
 function statusLabel(status) {
