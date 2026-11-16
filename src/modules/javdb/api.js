@@ -1,4 +1,5 @@
 const API_BASE = 'https://jdforrepam.com/api'
+const PROXY_BASE = import.meta.env.VITE_JAVDB_PROXY_URL?.replace(/\/$/, '')
 
 function add32(a, b) { return (a + b) & 0xffffffff }
 function cmn(q, a, b, x, s, t) {
@@ -50,13 +51,14 @@ export function buildSignature(timestamp = Math.floor(Date.now() / 1000)) {
 }
 
 async function request(path, params = {}, headers = {}) {
-  const url = new URL(`${API_BASE}${path}`)
+  const proxyEnabled = Boolean(PROXY_BASE)
+  const url = new URL(`${proxyEnabled ? PROXY_BASE : API_BASE}${path}`)
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)))
   let response
   try {
     response = await fetch(url, {
       method: 'GET',
-      headers: { jdSignature: buildSignature(), ...headers },
+      headers: { [proxyEnabled ? 'x-jd-signature' : 'jdsignature']: buildSignature(), ...headers },
       mode: 'cors',
       credentials: 'omit',
     })
@@ -66,16 +68,16 @@ async function request(path, params = {}, headers = {}) {
   const text = await response.text()
   let data
   try { data = text ? JSON.parse(text) : null } catch { data = text }
-  if (!response.ok) {
+  if (!response.ok || data?.success === 0) {
     const message = data?.message || data?.error || `HTTP ${response.status}`
-    throw Object.assign(new Error(message), { status: response.status, response: data, url: url.toString() })
+    throw Object.assign(new Error(message), { status: response.status, response: data, action: data?.action, url: url.toString() })
   }
   return { data, status: response.status, url: url.toString() }
 }
 
 export async function searchMovies(number) {
   return request('/v2/search', {
-    q: number, page: 1, type: 'movie', limit: 10,
+    q: number, page: 1, type: 'movie', limit: 1,
     movie_type: 'all', from_recent: 'false',
     movie_filter_by: 'all', movie_sort_by: 'relevance',
   }, { 'accept-language': 'zh-TW' })

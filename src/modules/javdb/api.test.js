@@ -26,8 +26,24 @@ describe('JavDB API client', () => {
     expect(new URL(url).pathname).toBe('/api/v2/search')
     expect(new URL(url).searchParams.get('q')).toBe('ABC-123')
     expect(new URL(url).searchParams.get('type')).toBe('movie')
-    expect(options.headers.jdSignature).toMatch(/^\d+\.lpw6vgqzsp\.[a-f0-9]{32}$/)
+    expect(new URL(url).searchParams.get('limit')).toBe('1')
+    expect(options.headers.jdsignature).toMatch(/^\d+\.lpw6vgqzsp\.[a-f0-9]{32}$/)
     expect(result.data.data.movies[0].id).toBe(123)
+  })
+
+  it('treats HTTP 200 business authentication failures as errors', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ success: 0, action: 'JWTVerificationError', message: '請登錄帳號', data: null }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(searchMovies('ABF-338')).rejects.toMatchObject({
+      message: '請登錄帳號',
+      action: 'JWTVerificationError',
+      status: 200,
+    })
   })
 
   it('requests a selected movie review page', async () => {
