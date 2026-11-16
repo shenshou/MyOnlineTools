@@ -50,7 +50,7 @@ export function buildSignature(timestamp = Math.floor(Date.now() / 1000)) {
   return `${timestamp}.lpw6vgqzsp.${digest}`
 }
 
-async function request(path, params = {}, headers = {}) {
+async function request(path, params = {}, headers = {}, signal) {
   const proxyEnabled = Boolean(PROXY_BASE)
   const url = new URL(`${proxyEnabled ? PROXY_BASE : API_BASE}${path}`)
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)))
@@ -61,6 +61,7 @@ async function request(path, params = {}, headers = {}) {
       headers: { [proxyEnabled ? 'x-jd-signature' : 'jdsignature']: buildSignature(), ...headers },
       mode: 'cors',
       credentials: 'omit',
+      signal,
     })
   } catch (error) {
     throw Object.assign(error, { url: url.toString() })
@@ -83,10 +84,10 @@ export async function searchMovies(number) {
   }, { 'accept-language': 'zh-TW' })
 }
 
-export async function getReviews(movieId, page = 1, limit = 20) {
+export async function getReviews(movieId, page = 1, limit = 20, { signal } = {}) {
   return request(`/v1/movies/${encodeURIComponent(movieId)}/reviews`, {
     page, sort_by: 'hotly', limit,
-  })
+  }, {}, signal)
 }
 
 
