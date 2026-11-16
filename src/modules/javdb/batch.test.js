@@ -8,11 +8,11 @@ import {
 
 describe('JavDB review helpers', () => {
   it('reads review arrays from the verified response shape', () => {
-    expect(getReviewItems({ data: { data: { reviews: [{ id: 1 }] } })).toEqual([{ id: 1 }])
+    expect(getReviewItems({ data: { data: { reviews: [{ id: 1 }] } } })).toEqual([{ id: 1 }])
   })
 
   it('parses unique keywords and matches case-insensitively by substring', () => {
-    const keywords = parseKeywords('beautiful,剧情\\nBEAUTIFUL')
+    const keywords = parseKeywords('beautiful,剧情\nBEAUTIFUL')
     expect(keywords).toEqual(['beautiful', '剧情'])
     const reviews = [
       { id: 1, content: 'A BEAUTIFUL movie', username: 'Alice' },
