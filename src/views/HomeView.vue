@@ -11,14 +11,14 @@ const search=ref(route.query.q||''), selected=ref('all')
 const filtered=computed(()=>tools.filter(t=>(selected.value==='all'||t.category===selected.value)&&(!search.value||[t.name,t.desc,...t.tags].join(' ').toLowerCase().includes(search.value.toLowerCase()))))
 const favoriteTools=computed(()=>tools.filter(t=>prefs.favorites.includes(t.id)))
 const recentTools=computed(()=>prefs.recent.map(id=>tools.find(t=>t.id===id)).filter(Boolean))
-const categoryTabs=[{value:'all',label:'全部工具 8'},...categories.map(c=>({value:c.id,label:c.name}))]
+const categoryTabs=[{value:'all',label:`全部工具 ${tools.length}`},...categories.map(c=>({value:c.id,label:c.name}))]
 </script>
 <template>
   <section class="hero">
     <div class="hero-orb orb-one"></div><div class="hero-orb orb-two"></div>
     <div class="hero-content"><div class="eyebrow"><Sparkles :size="14"/> YOUR EVERYDAY TOOLBOX</div><h1>把繁琐的事，<span>简单解决。</span></h1><p>精选实用在线工具，轻量、快速、无需安装。打开即用，让效率回归简单。</p>
       <label class="hero-search"><Search :size="20"/><input v-model="search" placeholder="你想使用什么工具？试试搜索 JSON、文本、颜色…"/><kbd>⌕</kbd></label>
-      <div class="hero-meta"><span><i></i> 8 个实用工具</span><span>无需注册</span><span>数据在本地处理</span></div>
+      <div class="hero-meta"><span><i></i> {{tools.length}} 个实用工具</span><span>无需注册</span><span>数据在本地处理</span></div>
     </div>
     <div class="hero-decoration"><div class="float-card float-a"><BracesIcon/> <span>JSON</span><b>✓</b></div><div class="float-card float-b"><span class="mini-palette">●</span><span>COLOR</span><b>#6366F1</b></div><div class="float-card float-c"><span class="mini-code">01</span><span>TEXT</span><b>Ready</b></div></div>
   </section>
