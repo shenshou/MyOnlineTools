@@ -19,13 +19,13 @@ const page = ref(1)
 const keyword = ref('')
 const showRaw = ref(false)
 const requestLog = ref([])
-const reviews = computed(() => Array.isArray(reviewResult.value?.data?.reviews) ? reviewResult.value.data.reviews : [])
+const reviews = computed(() => Array.isArray(reviewResult.value?.data?.data?.reviews) ? reviewResult.value.data.reviews : [])
 const filteredReviews = computed(() => {
   const q = keyword.value.trim().toLocaleLowerCase()
   if (!q) return reviews.value
   return reviews.value.filter(item => [item.content, item.username].join(' ').toLocaleLowerCase().includes(q))
 })
-const movies = computed(() => Array.isArray(searchResult.value?.data?.movies) ? searchResult.value.data.movies : [])
+const movies = computed(() => Array.isArray(searchResult.value?.data?.data?.movies) ? searchResult.value.data.movies : [])
 
 function logRequest(label, result) {
   requestLog.value.unshift({ label, status: result.status, url: result.url, at: new Date().toLocaleString() })
