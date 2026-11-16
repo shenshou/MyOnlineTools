@@ -66,15 +66,7 @@ export function splitTextByKeywords(value, keywords = []) {
     .sort((a, b) => b.length - a.length)
   if (!text || !terms.length) return [{ text, matched: false }]
 
-  const escapeRegex = term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\export function splitTextByKeywords(value, keywords = []) {
-  const text = String(value || '')
-  const terms = [...new Set((keywords || []).map(term => String(term || '').trim()).filter(Boolean))]
-    .sort((a, b) => b.length - a.length)
-  if (!text || !terms.length) return [{ text, matched: false }]
-  const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const pattern = new RegExp(`(${terms.map(escapeRegex).join('|')})`, 'gi')
-  return text.split(pattern).filter(part => part !== '').map((part, index) => ({ text: part, matched: index % 2 === 1 }))
-}')
+  const escapeRegex = term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const pattern = new RegExp(terms.map(escapeRegex).join('|'), 'gi')
   const parts = []
   let cursor = 0
