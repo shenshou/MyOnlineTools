@@ -1,13 +1,15 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, Search, MessageSquareText, RefreshCw, ChevronLeft, ChevronRight, ExternalLink, Code2, CheckCircle2, AlertTriangle, LoaderCircle } from 'lucide-vue-next'
+import { ArrowLeft, Search, MessageSquareText, ChevronLeft, ChevronRight, Code2, CheckCircle2, AlertTriangle, LoaderCircle } from 'lucide-vue-next'
 import { buildSignature, searchMovies, getReviews } from '../modules/javdb/api'
 
 const router = useRouter()
 const number = ref('')
 const busy = ref(false)
 const stage = ref('idle')
+const searchState = ref('idle')
+const reviewState = ref('idle')
 const error = ref('')
 const diagnostic = ref('')
 const searchResult = ref(null)
@@ -39,29 +41,29 @@ function explainError(err) {
 }
 async function runSearch() {
   if (!number.value.trim()) { error.value = '请先输入番号'; return }
-  busy.value = true; error.value = ''; diagnostic.value = ''; stage.value = 'searching'
+  busy.value = true; error.value = ''; diagnostic.value = ''; stage.value = 'searching'; searchState.value = 'loading'; reviewState.value = 'idle'
   searchResult.value = null; selectedMovie.value = null; reviewResult.value = null; page.value = 1; requestLog.value = []
   try {
     const result = await searchMovies(number.value.trim())
     searchResult.value = result
     logRequest('番号搜索', result)
-    stage.value = 'searched'
+    stage.value = 'searched'; searchState.value = 'success'
     if (!movies.value.length) diagnostic.value = '请求成功，但接口没有返回匹配影片。请确认番号格式，或查看原始响应。'
   } catch (err) {
     error.value = explainError(err); diagnostic.value = err.message
-    stage.value = 'failed'
+    stage.value = 'failed'; searchState.value = 'failed'
     requestLog.value.unshift({ label: '番号搜索失败', status: err.status || '网络错误', url: err.url || '请求未能完成', at: new Date().toLocaleString() })
   } finally { busy.value = false }
 }
 async function loadReviews(movie, targetPage = 1) {
   selectedMovie.value = movie; busy.value = true; error.value = ''; diagnostic.value = ''; page.value = targetPage
-  stage.value = 'loading-reviews'; reviewResult.value = null
+  stage.value = 'loading-reviews'; reviewState.value = 'loading'; reviewResult.value = null
   try {
     const result = await getReviews(movie.id, targetPage, 20)
-    reviewResult.value = result; logRequest(`Reviews 第 ${targetPage} 页`, result); stage.value = 'reviews'
+    reviewResult.value = result; logRequest(`Reviews 第 ${targetPage} 页`, result); stage.value = 'reviews'; reviewState.value = 'success'
     if (!reviews.value.length) diagnostic.value = '接口请求成功，但该页没有评论数据。'
   } catch (err) {
-    error.value = explainError(err); diagnostic.value = err.message; stage.value = 'failed'
+    error.value = explainError(err); diagnostic.value = err.message; stage.value = 'failed'; reviewState.value = 'failed'
     requestLog.value.unshift({ label: `Reviews 第 ${targetPage} 页失败`, status: err.status || '网络错误', url: err.url || '请求未能完成', at: new Date().toLocaleString() })
   } finally { busy.value = false }
 }
@@ -92,8 +94,8 @@ function movieTitle(movie) { return movie.origin_title || movie.title || movie.n
 
     <section class="status-grid">
       <div class="status-card"><span>签名生成</span><strong class="status-ok"><CheckCircle2 :size="15"/> 已就绪</strong><small>时间戳 + MD5</small></div>
-      <div class="status-card"><span>搜索状态</span><strong>{{stage === 'searched' || stage === 'reviews' ? '已完成' : stage === 'failed' ? '失败' : '待验证'}}</strong><small>/v2/search</small></div>
-      <div class="status-card"><span>评论状态</span><strong>{{stage === 'reviews' ? '已获取' : '待验证'}}</strong><small>/v1/movies/{id}/reviews</small></div>
+      <div class="status-card"><span>搜索状态</span><strong>{{searchState === 'success' ? '已完成' : searchState === 'failed' ? '失败' : searchState === 'loading' ? '请求中' : '待验证'}}</strong><small>/v2/search</small></div>
+      <div class="status-card"><span>评论状态</span><strong>{{reviewState === 'success' ? '已获取' : reviewState === 'failed' ? '失败' : reviewState === 'loading' ? '请求中' : '待验证'}}</strong><small>/v1/movies/{id}/reviews</small></div>
     </section>
 
     <div v-if="error" class="alert-error"><AlertTriangle :size="17"/><div><strong>请求未通过</strong><p>{{error}}</p><small v-if="diagnostic">原始错误：{{diagnostic}}</small></div></div>
