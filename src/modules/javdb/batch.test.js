@@ -67,4 +67,17 @@ describe('keyword highlighting', () => {
       { text: ' in this example', matched: false },
     ])
   })
+
+  it('handles adjacent and overlapping keywords without flipping highlight state', () => {
+    expect(splitTextByKeywords('foobar foo', ['foo', 'foobar'])).toEqual([
+      { text: 'foobar', matched: true },
+      { text: ' ', matched: false },
+      { text: 'foo', matched: true },
+    ])
+  })
+
+  it('does not treat a username-only match as a comment-content match', () => {
+    const reviews = [{ id: 1, username: 'beautiful_user', content: 'ordinary comment' }]
+    expect(filterReviewsByKeywords(reviews, ['beautiful'])).toEqual([])
+  })
 })

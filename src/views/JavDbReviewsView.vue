@@ -12,6 +12,7 @@ const numbersInput = ref('')
 const mode = ref('keywords')
 const keywordsInput = ref('')
 const sinceDate = ref('')
+const dateInput = ref(null)
 const activeTaskId = ref('')
 const requestInterval = ref('5000')
 const tasks = ref([])
@@ -283,6 +284,16 @@ function reviewCountForTask(task) {
   return visibleReviews(task).length
 }
 
+function openDatePicker() {
+  if (isRunning.value || !dateInput.value) return
+  try {
+    if (typeof dateInput.value.showPicker === 'function') dateInput.value.showPicker()
+    else dateInput.value.focus()
+  } catch {
+    dateInput.value.focus()
+  }
+}
+
 function selectTask(task) {
   activeTaskId.value = task.id
 }
@@ -370,7 +381,17 @@ onBeforeUnmount(() => {
         />
         <div class="date-filter">
           <label for="review-since-date">评论日期起始时间</label>
-          <input id="review-since-date" v-model="sinceDate" type="date" :disabled="isRunning" />
+          <div class="date-input-wrap" @click="openDatePicker">
+            <input
+              id="review-since-date"
+              ref="dateInput"
+              v-model="sinceDate"
+              type="date"
+              :disabled="isRunning"
+              @click="openDatePicker"
+            />
+            <span class="date-input-hint" aria-hidden="true">点击任意位置选择日期</span>
+          </div>
           <p>默认不限制日期。选择日期后，只保留该日期及之后发布的评论；日期与关键词同时生效。</p>
         </div>
       </template>
@@ -482,7 +503,12 @@ onBeforeUnmount(() => {
 .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .date-filter{display:grid;gap:6px;margin-top:12px}
 .date-filter label{font-size:11px;font-weight:650}
-.date-filter input{width:min(100%,280px);min-height:38px;padding:7px 10px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);color:var(--text);font:inherit;font-size:12px}
+.date-input-wrap{position:relative;width:min(100%,320px);cursor:pointer}
+.date-filter input{width:100%;min-height:42px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:var(--radius-md);background:var(--surface);color:var(--text);font:inherit;font-size:12px;cursor:pointer}
+.date-filter input:focus{outline:0;border-color:var(--primary);box-shadow:var(--focus-ring)}
+.date-filter input:disabled{opacity:.6;cursor:not-allowed}
+.date-input-hint{position:absolute;right:34px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted);pointer-events:none}
+.date-filter input:focus~.date-input-hint{display:none}
 .date-filter p{margin:0;color:var(--muted);font-size:10px;line-height:1.6}
 .notice{display:flex;align-items:flex-start;gap:7px;margin:12px 0;color:var(--muted);font-size:10px;line-height:1.6}
 .notice svg{flex-shrink:0;margin-top:1px}

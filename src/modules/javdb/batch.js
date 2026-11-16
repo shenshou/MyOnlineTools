@@ -19,10 +19,7 @@ export function parseKeywords(input) {
 export function filterReviewsByKeywords(reviews, keywords) {
   if (!keywords?.length) return reviews
   return reviews.filter(review => {
-    const searchable = [review?.content, review?.username]
-      .filter(Boolean)
-      .join(' ')
-      .toLocaleLowerCase()
+    const searchable = String(review?.content || '').toLocaleLowerCase()
     return keywords.some(keyword => searchable.includes(keyword))
   })
 }
@@ -68,7 +65,23 @@ export function splitTextByKeywords(value, keywords = []) {
   const terms = [...new Set((keywords || []).map(term => String(term || '').trim()).filter(Boolean))]
     .sort((a, b) => b.length - a.length)
   if (!text || !terms.length) return [{ text, matched: false }]
-  const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const pattern = new RegExp(`(${terms.map(escapeRegex).join('|')})`, 'gi')
-  return text.split(pattern).filter(part => part !== '').map((part, index) => ({ text: part, matched: index % 2 === 1 }))
+
+  const escapeRegex = term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const pattern = new RegExp(terms.map(escapeRegex).join('|'), 'gi')
+  const parts = []
+  let cursor = 0
+  let match
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > cursor) {
+      parts.push({ text: text.slice(cursor, match.index), matched: false })
+    }
+    parts.push({ text: match[0], matched: true })
+    cursor = match.index + match[0].length
+  }
+
+  if (cursor < text.length) {
+    parts.push({ text: text.slice(cursor), matched: false })
+  }
+  return parts.length ? parts : [{ text, matched: false }]
 }
