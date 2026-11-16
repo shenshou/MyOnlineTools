@@ -76,7 +76,7 @@ describe('JavDB API client', () => {
     const [url, options] = fetchMock.mock.calls[0]
 
     expect(new URL(url).pathname).toBe('/api/v1/movies/movie-987/magnets')
-    expect(options.headers.jdsignature).toMatch(/^\\d+\\.lpw6vgqzsp\\.[a-f0-9]{32}$/)
+    expect(options.headers.jdsignature).toMatch(/^\d+\.lpw6vgqzsp\.[a-f0-9]{32}$/)
   })
 })
 
