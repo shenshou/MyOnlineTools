@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildSignature, getReviews, searchMovies } from './api'
+import { buildSignature, getReviews, searchMovies, parseMovieId } from './api'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -61,5 +61,20 @@ describe('JavDB API client', () => {
     expect(new URL(url).searchParams.get('page')).toBe('2')
     expect(new URL(url).searchParams.get('sort_by')).toBe('hotly')
     expect(new URL(url).searchParams.get('limit')).toBe('20')
+  })
+})
+
+
+describe('JavDB movie ID parsing', () => {
+  it('extracts an ID from a JavDB detail URL', () => {
+    expect(parseMovieId('https://javdb.com/v/abc123?foo=bar')).toBe('abc123')
+  })
+
+  it('accepts a directly pasted movie ID', () => {
+    expect(parseMovieId('abc123')).toBe('abc123')
+  })
+
+  it('rejects search URLs without a movie ID', () => {
+    expect(() => parseMovieId('https://javdb.com/search?q=ABF-338')).toThrow(/没有找到影片 ID/)
   })
 })
