@@ -488,7 +488,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.javdb-page{max-width:1280px;margin:0 auto;padding:30px 28px 54px;color:var(--text)}
+.javdb-page{max-width:1200px;margin:0 auto;padding:30px 28px 54px;color:var(--text)}
 .back-link{display:flex;align-items:center;gap:7px;border:0;background:transparent;color:var(--muted);font-size:12px;padding:5px 0;cursor:pointer}
 .page-heading{display:flex;align-items:center;gap:15px;margin:25px 0 24px}
 .heading-icon{width:50px;height:50px;display:grid;place-items:center;border-radius:14px;background:var(--primary-soft);color:var(--primary);flex-shrink:0}
