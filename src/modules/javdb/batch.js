@@ -38,3 +38,26 @@ export function uniqueReviews(reviews) {
     return true
   })
 }
+
+export function getReviewTimestamp(review) {
+  const value = review?.created_at ?? review?.createdAt ?? review?.created
+  if (value == null || value === '') return null
+  const numeric = typeof value === 'number' || /^\d+(?:\.\d+)?$/.test(String(value))
+  const timestamp = numeric
+    ? Number(value) * (Number(value) < 1e12 ? 1000 : 1)
+    : Date.parse(value)
+  return Number.isFinite(timestamp) ? timestamp : null
+}
+
+export function filterReviews(reviews, keywords = [], sinceDate = '') {
+  const keywordFiltered = filterReviewsByKeywords(reviews, keywords)
+  if (!sinceDate) return keywordFiltered
+
+  const cutoff = new Date(`${sinceDate}T00:00:00`).getTime()
+  if (!Number.isFinite(cutoff)) return keywordFiltered
+
+  return keywordFiltered.filter(review => {
+    const timestamp = getReviewTimestamp(review)
+    return timestamp != null && timestamp >= cutoff
+  })
+}
