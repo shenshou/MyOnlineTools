@@ -71,7 +71,8 @@ const navigationGroups = [
     title: '资源管理',
     items: [
       { to: '/navigation', label: '网址导航', icon: Compass, active: () => route.path === '/navigation' },
-      { to: '/lab/javdb-api', label: '评论 API 验证', icon: MessageSquareText, active: () => route.path === '/lab/javdb-api' },
+      { to: '/javdb-reviews', label: 'JavDB 评论搜索', icon: MessageSquareText, active: () => route.path === '/javdb-reviews' },
+      { to: '/lab/javdb-api', label: '评论 API 验证原型', icon: MessageSquareText, active: () => route.path === '/lab/javdb-api' },
     ],
   },
 ]
