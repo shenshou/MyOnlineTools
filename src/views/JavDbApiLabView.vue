@@ -20,7 +20,7 @@ const keyword = ref('')
 const showRaw = ref(false)
 const requestLog = ref([])
 const searchUrl = computed(() => {
-  const base = javdbBaseUrl.value.trim().replace(/\\/$/, '')
+  const base = javdbBaseUrl.value.trim().replace(/\/+$/, '')
   return base ? `${base}/search?q=${encodeURIComponent(number.value.trim())}` : ''
 })
 const reviews = computed(() => Array.isArray(reviewResult.value?.data?.data?.reviews) ? reviewResult.value.data.data.reviews : [])
