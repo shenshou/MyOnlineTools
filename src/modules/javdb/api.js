@@ -96,7 +96,7 @@ export async function getMagnets(movieId, { signal } = {}) {
     {},
     {},
     signal,
-    'include',
+    'omit',
   )
   const magnets = result.data?.data?.magnets ?? result.data?.magnets
   return Array.isArray(magnets) ? magnets : []

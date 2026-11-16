@@ -1,3 +1,4 @@
+// Regression coverage: both reviews and magnets use CORS-compatible credential mode.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildSignature, getMagnets, getReviews, searchMovies, parseMovieId } from './api'
 
@@ -78,7 +79,7 @@ describe('JavDB API client', () => {
 
     expect(new URL(url).pathname).toBe('/api/v1/movies/movie-987/magnets')
     expect(options.headers.jdsignature).toMatch(/^\d+\.lpw6vgqzsp\.[a-f0-9]{32}$/)
-    expect(options.credentials).toBe('include')
+    expect(options.credentials).toBe('omit')
   })
 })
 
