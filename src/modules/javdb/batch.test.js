@@ -26,3 +26,23 @@ describe('JavDB review helpers', () => {
     expect(uniqueReviews([{ id: 1 }, { id: 2 }, { id: 1 }])).toEqual([{ id: 1 }, { id: 2 }])
   })
 })
+
+
+describe('review date filtering', () => {
+  it('keeps all dates when no cutoff is selected', async () => {
+    const { filterReviews } = await import('./batch')
+    const reviews = [{ id: 1, created_at: '2024-01-01T00:00:00Z' }, { id: 2, created_at: '2026-01-01T00:00:00Z' }]
+    expect(filterReviews(reviews, [], '')).toEqual(reviews)
+  })
+
+  it('combines case-insensitive keyword matching with an inclusive date cutoff', async () => {
+    const { filterReviews } = await import('./batch')
+    const reviews = [
+      { id: 1, content: 'BEAUTIFUL story', created_at: '2025-12-31T23:59:59Z' },
+      { id: 2, content: 'A beautiful scene', created_at: '2026-01-01T00:00:00Z' },
+      { id: 3, content: 'ordinary comment', created_at: '2026-02-01T00:00:00Z' },
+      { id: 4, content: 'beautiful but date unknown' },
+    ]
+    expect(filterReviews(reviews, ['beautiful'], '2026-01-01').map(review => review.id)).toEqual([2])
+  })
+})
