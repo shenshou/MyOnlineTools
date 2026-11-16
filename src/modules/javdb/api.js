@@ -44,8 +44,7 @@ function md5(input) {
   return state.map(n=>[0,8,16,24].map(s=>((n>>>s)&255).toString(16).padStart(2,'0')).join('')).join('')
 }
 
-export function buildSignature() {
-  const timestamp = Math.floor(Date.now() / 1000)
+export function buildSignature(timestamp = Math.floor(Date.now() / 1000)) {
   const digest = md5(`${timestamp}71cf27bb3c0bcdf207b64abecddc970098c7421ee7203b9cdae54478478a199e7d5a6e1a57691123c1a931c057842fb73ba3b3c83bcd69c17ccf174081e3d8aa`)
   return `${timestamp}.lpw6vgqzsp.${digest}`
 }
@@ -53,12 +52,17 @@ export function buildSignature() {
 async function request(path, params = {}, headers = {}) {
   const url = new URL(`${API_BASE}${path}`)
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)))
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: { jdSignature: buildSignature(), ...headers },
-    mode: 'cors',
-    credentials: 'omit',
-  })
+  let response
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: { jdSignature: buildSignature(), ...headers },
+      mode: 'cors',
+      credentials: 'omit',
+    })
+  } catch (error) {
+    throw Object.assign(error, { url: url.toString() })
+  }
   const text = await response.text()
   let data
   try { data = text ? JSON.parse(text) : null } catch { data = text }
