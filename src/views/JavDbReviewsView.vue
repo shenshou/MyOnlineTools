@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { ArrowLeft, Search, Play, Pause, Square, RotateCcw, ExternalLink, MessageSquareText, CheckCircle2, AlertTriangle, Clock3, Film } from 'lucide-vue-next'
+import { ArrowLeft, Play, Pause, Square, RotateCcw, ExternalLink, MessageSquareText, AlertTriangle, Clock3, Film } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { Button, Textarea, Select } from '../components/ui'
 import { getReviews } from '../modules/javdb/api'
@@ -31,7 +31,7 @@ const canStart = computed(() => !isRunning.value && validInput.value && (mode.va
 const finishedCount = computed(() => tasks.value.filter(task => ['completed', 'failed', 'not-found', 'ambiguous', 'cancelled'].includes(task.status)).length)
 const completedCount = computed(() => tasks.value.filter(task => task.status === 'completed').length)
 const totalReviews = computed(() => tasks.value.reduce((sum, task) => sum + task.reviews.length, 0))
-const matchedReviews = computed(() => tasks.value.reduce((sum, task) => sum + filterReviewsByKeywords(task.reviews, keywordList.value).length, 0))
+const displayedReviews = computed(() => tasks.value.reduce((sum, task) => sum + (mode.value === 'keywords' ? filterReviewsByKeywords(task.reviews, keywordList.value).length : task.reviews.length), 0))
 
 let activeController = null
 let cancelled = false
@@ -346,6 +346,7 @@ onBeforeUnmount(() => {
         placeholder="多个关键词用逗号或换行分隔，例如：剧情，beautiful，推荐"
         hint="不区分大小写，按部分文本匹配；多个关键词采用“任意一个命中”规则。"
       />
+      <p v-if="mode === 'keywords' && !keywordList.length" class="validation-message">关键词筛选模式至少需要输入一个关键词。</p>
       <p class="notice"><Clock3 :size="14" /> 请求间隔应用于 JavDB 搜索请求和 Reviews 每一页请求。间隔只是降低请求频率，不代表一定不会触发服务端限制。</p>
       <div v-if="pageError" class="error-message"><AlertTriangle :size="15" />{{ pageError }}</div>
       <div class="actions">
@@ -367,7 +368,7 @@ onBeforeUnmount(() => {
       <div class="summary-grid">
         <div><strong>{{ completedCount }}</strong><span>成功番号</span></div>
         <div><strong>{{ totalReviews }}</strong><span>获取评论</span></div>
-        <div><strong>{{ matchedReviews }}</strong><span>当前匹配</span></div>
+        <div><strong>{{ displayedReviews }}</strong><span>当前展示评论</span></div>
       </div>
 
       <article v-for="task in tasks" :key="task.id" class="task-card">
@@ -445,6 +446,7 @@ onBeforeUnmount(() => {
 .notice{display:flex;align-items:flex-start;gap:7px;margin:12px 0;color:var(--muted);font-size:10px;line-height:1.6}
 .notice svg{flex-shrink:0;margin-top:1px}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.validation-message{margin:8px 0;color:var(--danger);font-size:10px}
 .error-message,.task-error{display:flex;align-items:flex-start;gap:7px;color:var(--danger);font-size:11px;line-height:1.6}
 .progress-track{height:6px;overflow:hidden;border-radius:10px;background:var(--surface-2)}
 .progress-value{height:100%;border-radius:10px;background:var(--primary);transition:width .2s}
