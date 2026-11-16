@@ -90,6 +90,17 @@ export async function getReviews(movieId, page = 1, limit = 20, { signal } = {})
   }, {}, signal)
 }
 
+export async function getMagnets(movieId, { signal } = {}) {
+  const result = await request(
+    `/v1/movies/${encodeURIComponent(movieId)}/magnets`,
+    {},
+    {},
+    signal,
+  )
+  const magnets = result.data?.data?.magnets ?? result.data?.magnets
+  return Array.isArray(magnets) ? magnets : []
+}
+
 
 // Accept either a JavDB detail URL (/v/{id}) or a movie ID copied directly.
 export function parseMovieId(input) {
