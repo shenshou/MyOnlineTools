@@ -88,3 +88,23 @@ export async function getReviews(movieId, page = 1, limit = 20) {
     page, sort_by: 'hotly', limit,
   })
 }
+
+
+// Accept either a JavDB detail URL (/v/{id}) or a movie ID copied directly.
+export function parseMovieId(input) {
+  const value = String(input || '').trim()
+  if (!value) throw new Error('请粘贴 JavDB 影片详情页地址或影片 ID')
+
+  if (/^[a-zA-Z0-9]+$/.test(value)) return value
+
+  let url
+  try {
+    url = new URL(value)
+  } catch {
+    throw new Error('无法识别输入内容。请粘贴完整的 JavDB 影片详情页地址，或直接输入影片 ID')
+  }
+
+  const match = url.pathname.match(/\/v\/([a-zA-Z0-9]+)(?:\/|$)/)
+  if (!match) throw new Error('地址中没有找到影片 ID。请确认这是 JavDB 的影片详情页（路径通常为 /v/影片ID）')
+  return match[1]
+}
