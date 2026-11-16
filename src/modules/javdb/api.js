@@ -104,7 +104,7 @@ export function parseMovieId(input) {
     throw new Error('无法识别输入内容。请粘贴完整的 JavDB 影片详情页地址，或直接输入影片 ID')
   }
 
-  const match = url.pathname.match(/\\/v\\/([a-zA-Z0-9]+)(?:\\/|$)/)
+  const match = url.pathname.match(/\/v\/([a-zA-Z0-9]+)(?:\/|$)/)
   if (!match) throw new Error('地址中没有找到影片 ID。请确认这是 JavDB 的影片详情页（路径通常为 /v/影片ID）')
   return match[1]
 }
