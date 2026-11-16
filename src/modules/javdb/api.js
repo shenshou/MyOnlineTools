@@ -50,7 +50,7 @@ export function buildSignature(timestamp = Math.floor(Date.now() / 1000)) {
   return `${timestamp}.lpw6vgqzsp.${digest}`
 }
 
-async function request(path, params = {}, headers = {}, signal) {
+async function request(path, params = {}, headers = {}, signal, credentials = 'omit') {
   const proxyEnabled = Boolean(PROXY_BASE)
   const url = new URL(`${proxyEnabled ? PROXY_BASE : API_BASE}${path}`)
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)))
@@ -60,7 +60,7 @@ async function request(path, params = {}, headers = {}, signal) {
       method: 'GET',
       headers: { [proxyEnabled ? 'x-jd-signature' : 'jdsignature']: buildSignature(), ...headers },
       mode: 'cors',
-      credentials: 'omit',
+      credentials,
       signal,
     })
   } catch (error) {
@@ -96,6 +96,7 @@ export async function getMagnets(movieId, { signal } = {}) {
     {},
     {},
     signal,
+    'include',
   )
   const magnets = result.data?.data?.magnets ?? result.data?.magnets
   return Array.isArray(magnets) ? magnets : []

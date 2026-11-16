@@ -61,6 +61,7 @@ describe('JavDB API client', () => {
     expect(new URL(url).searchParams.get('page')).toBe('2')
     expect(new URL(url).searchParams.get('sort_by')).toBe('hotly')
     expect(new URL(url).searchParams.get('limit')).toBe('20')
+    expect(options.credentials).toBe('omit')
   })
 
   it('requests magnets for a selected movie and returns the magnet list', async () => {
@@ -77,6 +78,7 @@ describe('JavDB API client', () => {
 
     expect(new URL(url).pathname).toBe('/api/v1/movies/movie-987/magnets')
     expect(options.headers.jdsignature).toMatch(/^\d+\.lpw6vgqzsp\.[a-f0-9]{32}$/)
+    expect(options.credentials).toBe('include')
   })
 })
 
