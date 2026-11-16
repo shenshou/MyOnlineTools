@@ -292,6 +292,7 @@ async function fetchSelectedCandidate(task, candidate) {
   cancelled = false
   activeController = new AbortController()
   try {
+    await fetchTaskMagnets(task, candidate)
     await fetchAllReviews(task, candidate)
     task.status = 'completed'
   } catch (error) {
