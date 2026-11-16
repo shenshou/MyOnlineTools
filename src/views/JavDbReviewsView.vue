@@ -22,7 +22,7 @@ const gapOptions = [
   { value: '5000', label: '5 秒（更保守）' },
 ]
 const keywordList = computed(() => parseKeywords(keywordsInput.value))
-const rawNumbers = computed(() => String(numbersInput.value || '').split(/[\\s,，;；]+/).map(value => value.trim()).filter(Boolean))
+const rawNumbers = computed(() => String(numbersInput.value || '').split(/[\s,，;；]+/).map(value => value.trim()).filter(Boolean))
 const parsedNumbers = computed(() => parseMovieNumbers(numbersInput.value))
 const invalidNumbers = computed(() => rawNumbers.value.filter(value => !/^[A-Z0-9]+(?:[-_][A-Z0-9]+)*$/i.test(value)))
 const uniqueNumberCount = computed(() => parsedNumbers.value.length)
