@@ -7,7 +7,7 @@ export function normalizeMovieCode(value) {
 export function parseMovieNumbers(input) {
   const seen = new Set()
   return String(input || '')
-    .split(/[\\s,，;；]+/)
+    .split(/[\s,，;；]+/)
     .map(value => value.trim().toUpperCase())
     .filter(value => /^[A-Z0-9]+(?:[-_][A-Z0-9]+)*$/.test(value))
     .filter(value => {
@@ -26,7 +26,7 @@ export function isExactMovieCode(title, code) {
   let index = 0
 
   for (const char of expected) {
-    while (index < source.length && /[\\s._-]/.test(source[index])) index += 1
+    while (index < source.length && /[\s._-]/.test(source[index])) index += 1
     if (source[index]?.toUpperCase() !== char) return false
     index += 1
   }
@@ -51,7 +51,7 @@ export function parseJavDbSearchResults(html, Parser = globalThis.DOMParser) {
     } catch {
       return []
     }
-    const match = url.pathname.match(/^\\/v\\/([a-zA-Z0-9]+)(?:\\/|$)/)
+    const match = url.pathname.match(/^\/v\/([a-zA-Z0-9]+)(?:\/|$)/)
     if (!match || seen.has(match[1])) return []
     seen.add(match[1])
 
