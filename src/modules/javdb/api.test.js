@@ -1,3 +1,4 @@
+// Regression coverage: both reviews and magnets use CORS-compatible credential mode.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildSignature, getMagnets, getReviews, searchMovies, parseMovieId } from './api'
 
