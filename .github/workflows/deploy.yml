@@ -33,6 +33,8 @@ jobs:
       - name: Security audit
         run: npm audit --audit-level=moderate
       - name: Build
+        env:
+          VITE_JAVDB_PROXY_URL: ${{ vars.VITE_JAVDB_PROXY_URL }}
         run: npm run build
       - name: Check production bundle budgets
         run: npm run check:bundle
