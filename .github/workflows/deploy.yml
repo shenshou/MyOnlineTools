@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: pages-${{ github.event_name }}
+  group: pages-${{ github.event_name }}-${{ github.event.pull_request.number || 'main' }}
   cancel-in-progress: true
 
 jobs:
