@@ -43,6 +43,10 @@ export async function runTool(id, input, options = {}) {
       }
       return `HEX：#${full.toUpperCase()}\nRGB：rgb(${r}, ${g}, ${b})\nHSL：hsl(${Math.round((h + 360) % 360)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`
     }
+    case 'jav-code-extract': {
+      const pattern = /(?<![A-Z0-9])(?=[A-Z0-9_-]*[A-Z])([A-Z0-9]{2,12}(?:[-_][A-Z0-9]{2,12})*)[-_ ](\d{2,7}(?:[-_]\d{2,5})?)(?![A-Z0-9])/gi
+      return [...value.matchAll(pattern)].map(([, prefix, number]) => `${prefix}-${number}`.toUpperCase()).join(' ')
+    }
     case 'magnet': {
       const prefix = 'magnet:?xt=urn:btih:'
       return value.split(/\r?\n/).map(line => line.trim()).filter(Boolean)

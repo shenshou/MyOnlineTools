@@ -46,6 +46,19 @@ describe('runTool', () => {
     await expect(runTool('color', 'not-a-color')).rejects.toThrow('请输入 3 位或 6 位 HEX')
   })
 
+  it('extracts JAV codes, normalizes letter case, and separates results with spaces', async () => {
+    const input = '片名：ssis-123，另外有 ABP_456 和 FC2-PPV-1234567；1pondo-123456。'
+    expect(await runTool('jav-code-extract', input)).toBe('SSIS-123 ABP-456 FC2-PPV-1234567 1PONDO-123456')
+  })
+
+  it('returns an empty string when no JAV codes are found', async () => {
+    expect(await runTool('jav-code-extract', '这段文本没有番号，日期是 2026-11-17。')).toBe('')
+  })
+
+  it('preserves repeated code occurrences in the source text', async () => {
+    expect(await runTool('jav-code-extract', 'ssis-123 与 SSIS-123')).toBe('SSIS-123 SSIS-123')
+  })
+
   it('adds magnet prefixes without changing existing magnet links', async () => {
     expect(await runTool('magnet', '0123\nmagnet:?xt=urn:btih:abcd')).toBe('magnet:?xt=urn:btih:0123\nmagnet:?xt=urn:btih:abcd')
   })
