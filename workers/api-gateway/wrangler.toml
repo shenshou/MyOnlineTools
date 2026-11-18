@@ -1,0 +1,7 @@
+name = "myonlinetools-api-gateway"
+main = "index.js"
+compatibility_date = "2026-11-16"
+
+[vars]
+ALLOWED_ORIGINS = "https://shenshou.github.io"
+GATEWAY_TIMEOUT_MS = "15000"
