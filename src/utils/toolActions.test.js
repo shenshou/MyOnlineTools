@@ -51,6 +51,12 @@ describe('runTool', () => {
     expect(await runTool('jav-code-extract', input)).toBe('SSIS-123 ABP-456 FC2-PPV-1234567 1PONDO-123456')
   })
 
+  it('does not treat spaced ordinal episode references as JAV codes', async () => {
+    const input = 'ABW-208 终极初体验 2nd 46：3'
+    expect(await runTool('jav-code-extract', input)).toBe('ABW-208')
+    expect(await runTool('jav-code-extract', '2nd-46 and 3rd_12')).toBe('')
+  })
+
   it('returns an empty string when no JAV codes are found', async () => {
     expect(await runTool('jav-code-extract', '这段文本没有番号，日期是 2026-11-17。')).toBe('')
   })
