@@ -4,41 +4,6 @@ import worker from '../index.js'
 
 const ORIGINAL_FETCH = globalThis.fetch
 
-test('JavDB gateway maps the signature and never forwards browser cookies', async () => {
-  let captured
-  globalThis.fetch = async (url, init) => {
-    captured = { url: String(url), init }
-    return new Response(JSON.stringify({ success: 1, data: [] }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  try {
-    const request = new Request(
-      'https://gateway.example/api/javdb/v1/movies/abc123/reviews?page=2&sort_by=hotly&limit=20',
-      {
-        method: 'GET',
-        headers: {
-          Origin: 'https://shenshou.github.io',
-          Cookie: 'must-not-forward=1',
-          'x-jd-signature': '1780000000.lpw6vgqzsp.signature',
-          'accept-language': 'zh-TW',
-        },
-      },
-    )
-    const response = await worker.fetch(request, {})
-    assert.equal(response.status, 200)
-    assert.equal(response.headers.get('Access-Control-Allow-Origin'), 'https://shenshou.github.io')
-    assert.equal(captured.url, 'https://jdforrepam.com/api/v1/movies/abc123/reviews?page=2&sort_by=hotly&limit=20')
-    assert.equal(captured.init.headers.get('jdsignature'), '1780000000.lpw6vgqzsp.signature')
-    assert.equal(captured.init.headers.get('Cookie'), null)
-    assert.equal(captured.init.headers.get('Authorization'), null)
-  } finally {
-    globalThis.fetch = ORIGINAL_FETCH
-  }
-})
-
 test('LTX session request is forwarded to its fixed host without cookies', async () => {
   let captured
   globalThis.fetch = async (url, init) => {
@@ -77,12 +42,12 @@ test('unknown upstream routes and unapproved preflight headers are rejected', as
   }), {})
   assert.equal(unknown.status, 404)
 
-  const preflight = await worker.fetch(new Request('https://gateway.example/api/javdb/v2/search', {
+  const preflight = await worker.fetch(new Request('https://gateway.example/api/ltx/api/items/query', {
     method: 'OPTIONS',
     headers: {
       Origin: 'https://shenshou.github.io',
-      'Access-Control-Request-Method': 'GET',
-      'Access-Control-Request-Headers': 'x-jd-signature, authorization',
+      'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Headers': 'content-type, authorization',
     },
   }), {})
   assert.equal(preflight.status, 403)
@@ -96,11 +61,13 @@ test('disallowed browser Origins are rejected before upstream fetch', async () =
   }
 
   try {
-    const response = await worker.fetch(new Request('https://gateway.example/api/javdb/v2/search', {
+    const response = await worker.fetch(new Request('https://gateway.example/api/ltx/api/crypto/session', {
+      method: 'POST',
       headers: {
         Origin: 'https://attacker.example',
-        'x-jd-signature': 'signature',
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ v: 1, publicKey: 'A'.repeat(87) }),
     }), {})
     assert.equal(response.status, 403)
     assert.equal(called, false)
