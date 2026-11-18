@@ -16,7 +16,8 @@
   const RESPONSE_CONTEXT = 'ltx-api-response-v1'
   const MAX_BATCH_SIZE = 300
   const PAGE_SIZE = 60
-  const REQUEST_GAP_MS = 1000
+  const REQUEST_INTERVALS = [1000, 3000, 5000, 8000, 10000, 15000]
+  let requestGapMs = 1000
   const encoder = new TextEncoder()
   let activeSession = null
   let catalogueSnapshot = null
@@ -224,7 +225,7 @@
     '.hint{margin:0 0 8px;color:#475569;font-size:11px}textarea{display:block;width:100%;min-height:112px;resize:vertical;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;font:12px/1.5 ui-monospace,monospace;outline:none}' +
     'textarea:focus{border-color:#2563eb;box-shadow:0 0 0 2px #2563eb22}.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}' +
     '.actions button{border:1px solid #cbd5e1;border-radius:7px;padding:7px 10px;background:#fff;color:#0f172a;font-size:11px}.actions .primary{border-color:#2563eb;background:#2563eb;color:#fff}' +
-    '.actions button:disabled{opacity:.45;cursor:not-allowed}.summary{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 8px;color:#475569;font-size:11px}.summary b{color:#0f172a}' +
+    '.actions button:disabled{opacity:.45;cursor:not-allowed}.interval-label{display:inline-block;margin:10px 7px 0 0;color:#475569;font-size:11px}.interval{margin-top:10px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#0f172a;font:11px system-ui}.summary{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 8px;color:#475569;font-size:11px}.summary b{color:#0f172a}' +
     '.progress{height:5px;overflow:hidden;border-radius:9px;background:#e2e8f0}.bar{height:100%;width:0;background:#2563eb;transition:width .15s}' +
     '.message{margin:8px 0;color:#475569;font-size:11px;overflow-wrap:anywhere}.message.warn{color:#b45309}.message.error{color:#b91c1c}' +
     '.results{max-height:260px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px}table{width:100%;border-collapse:collapse;font-size:11px}' +
@@ -242,7 +243,8 @@
     '<div class="body"><p class="hint">每行一个番号，也支持空格、逗号或分号分隔；单次最多 300 个，按顺序逐个查询。</p>' +
     '<textarea class="input" placeholder="IPX-811&#10;SSIS-123&#10;ABW-208"></textarea>' +
     '<div class="actions"><button type="button" class="primary start">开始检测</button><button type="button" class="cancel" disabled>停止</button>' +
-    '<button type="button" class="copy" disabled>复制结果</button><button type="button" class="export" disabled>导出 CSV</button><button type="button" class="clear">清空</button></div>' +
+    '<button type="button" class="copy" disabled>复制结果</button><button type="button" class="clear">清空</button></div>' +
+    '<label class="interval-label" for="ltx-request-interval">请求间隔</label><select class="interval" id="ltx-request-interval" aria-label="请求间隔"><option value="1000" selected>1 秒（默认）</option><option value="3000">3 秒</option><option value="5000">5 秒</option><option value="8000">8 秒</option><option value="10000">10 秒</option><option value="15000">15 秒</option></select>' +
     '<div class="summary"><span>总数 <b class="total">0</b></span><span>存在 <b class="yes">0</b></span><span>不存在 <b class="no">0</b></span><span>失败 <b class="failed">0</b></span></div>' +
     '<div class="progress"><div class="bar"></div></div><p class="message" role="status">等待输入番号。</p>' +
     '<div class="results"><table><thead><tr><th>番号</th><th>结果</th></tr></thead><tbody></tbody></table></div>' +
@@ -254,7 +256,6 @@
   const startButton = $('.start')
   const cancelButton = $('.cancel')
   const copyButton = $('.copy')
-  const exportButton = $('.export')
   const message = $('.message')
   const tbody = $('tbody')
   const bar = $('.bar')
@@ -271,7 +272,6 @@
     const completed = yes + no + failed
     bar.style.width = total ? (completed / total * 100) + '%' : '0%'
     copyButton.disabled = completed === 0
-    exportButton.disabled = completed === 0
   }
   function renderRows() {
     tbody.replaceChildren()
@@ -299,12 +299,6 @@
     cancelButton.disabled = !value
     input.disabled = value
   }
-  function exportText() {
-    const rows = [['番号', '结果', '错误']]
-    for (const item of results) rows.push([item.code, statusLabel(item.status), item.error || ''])
-    return rows.map(row => row.map(value => '"' + String(value).replace(/"/g, '""') + '"').join(',')).join('\r\n')
-  }
-
   async function runBatch() {
     if (running) return
     const codes = parseInput(input.value)
@@ -359,7 +353,7 @@
           }
         }
         renderRows()
-        if (index < results.length - 1 && !signal.aborted) await sleep(REQUEST_GAP_MS, signal)
+        if (index < results.length - 1 && !signal.aborted) await sleep(requestGapMs, signal)
       }
     } catch (error) {
       if (error?.name !== 'AbortError') setMessage(error?.message || '批量检测中断。', 'error')
@@ -374,6 +368,10 @@
     }
   }
 
+  $('.interval').addEventListener('change', event => {
+    const selected = Number(event.target.value)
+    if (REQUEST_INTERVALS.includes(selected)) requestGapMs = selected
+  })
   startButton.addEventListener('click', runBatch)
   cancelButton.addEventListener('click', () => activeController?.abort())
   $('.minimize').addEventListener('click', () => { panel.hidden = true; launcher.hidden = false })
@@ -392,15 +390,6 @@
       ).join('\n'))
       setMessage('结果已复制到剪贴板。')
     } catch { setMessage('复制失败，请检查浏览器剪贴板权限。', 'warn') }
-  })
-  exportButton.addEventListener('click', () => {
-    const blob = new Blob(['\uFEFF' + exportText()], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'ltx-code-check-' + new Date().toISOString().slice(0, 10) + '.csv'
-    link.click()
-    URL.revokeObjectURL(url)
   })
 
   function mount() {
