@@ -168,6 +168,7 @@
   async function checkExists(rawCode) {
     const code = normalizeCode(rawCode)
     if (!code) throw new Error('番号为空')
+    if (code.length > 64) throw new Error('番号长度超过 64 个字符')
 
     for (let snapshotAttempt = 0; snapshotAttempt < 2; snapshotAttempt += 1) {
       const session = await createSession()
@@ -225,7 +226,7 @@
         }
         throw new Error('LTX 搜索分页超过安全上限')
       } catch (error) {
-        if (error?.reason === 'snapshotExpired' && snapshotAttempt === 0) continue
+        if (['snapshotExpired', 'cryptoSession'].includes(error?.reason) && snapshotAttempt === 0) continue
         throw error
       }
     }
