@@ -1,27 +1,36 @@
-# LTX same-origin existence-check bridge
+# LTX 批量番号存在性检测（油猴脚本）
 
-The GitHub Pages page cannot call the LTX API directly because the browser's OPTIONS preflight is rejected. This prototype moves only the network request into a userscript running on the official LTX origin.
+这是一个独立运行在 LTX 官方网站页面中的批量检测脚本，不依赖 GitHub Pages 工具箱，也不需要 Gateway、弹窗或跨页面消息桥接。
 
-## Install once
+## 安装
 
-1. Install a userscript manager such as Tampermonkey.
-2. Open the [LTX existence-check bridge userscript](./ltx-existence-bridge.user.js) on GitHub and install it.
-3. Keep the userscript enabled for `https://ltxlib.dpdns.org/*`.
-4. Open the toolbox's `/ltx-test` page and run a check. The page opens an LTX popup, waits for the helper, and sends the code using `postMessage`.
+1. 安装 Tampermonkey 或 Violentmonkey 浏览器扩展。
+2. 打开并安装 [LTX 批量番号检测脚本](https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/ltx-batch-checker.user.js)。
+3. 打开 [LTX 官方网站](https://ltxlib.dpdns.org/)。
+4. 页面右下角会出现「LTX 批量检测」面板。
 
-## Request flow
+脚本需要在 LTX 官方站点页面运行。若站点要求登录，请先按网站正常流程登录。
 
-- The toolbox page opens the official LTX origin from a user-initiated action.
-- The helper accepts messages only from `https://shenshou.github.io` and only from `window.opener`.
-- Session negotiation and catalogue/search requests use relative same-origin URLs, `credentials: include`, and the official ECDH P-256 / HKDF-SHA256 / AES-256-GCM response protocol.
-- The helper checks exact normalized equality against `item.code`.
-- The helper sends only `true`, `false`, or an error string to the opener. It does not persist result records or log response bodies.
+## 使用
 
-## Important limitations
+- 每行输入一个番号；也支持逗号、分号分隔。
+- 单批最多 300 个，脚本按顺序逐个查询，默认间隔 1 秒。
+- 结果分为「存在」「不存在」「检测失败」；失败不会被当作不存在。
+- 可停止批次、复制结果或导出 CSV。
+- 结果只保存在当前页面运行期间的内存中，不写入 localStorage、IndexedDB 或远程存储。
 
-- This is a prototype and has not yet been live-verified in a real browser with the userscript manager installed.
-- Popup access must be allowed. The LTX page must not sever `window.opener` through a Cross-Origin-Opener-Policy that prevents the bridge.
-- This does not bypass the LTX origin policy: it executes requests from the official site origin, in the same way the official frontend does.
-- The upstream can still reject requests for other reasons (verification, rate limiting, session expiry, or policy changes).
-- The original direct GitHub Pages request and the Cloudflare Gateway are not used by this bridge.
-- JavDB code and request paths are untouched.
+## 查询与请求策略
+
+- 使用 LTX 官方页面的同源相对路径请求，并携带浏览器现有站点凭据。
+- 按官方前端协议执行 ECDH P-256、HKDF-SHA256、AES-256-GCM 响应解密及 Gzip 解压。
+- 只按 `item.code` 做规范化后的精确匹配，不把模糊搜索命中当作存在。
+- 只有完整检查分页且分页元数据一致后，才会返回「不存在」。
+- 遇到 HTTP 403 会停止剩余批次；遇到 HTTP 429 会遵循服务器的 `Retry-After`，不尝试绕过站点限制。
+
+## 边界与限制
+
+- 脚本不绕过登录、验证码、访问控制或站点风控；上游拒绝请求时会显示失败。
+- 当前自动化检查只能验证脚本语法和仓库构建，不能替代真实浏览器中的 LTX 上游验证。
+- LTX 站点可能调整 API、加密协议或访问策略，届时需要更新脚本。
+- 脚本不读取或展示作品详情，只在内存中解密响应并检查番号字段。
+- JavDB 相关代码和请求路径不属于本脚本范围，保持独立。

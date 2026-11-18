@@ -30,6 +30,8 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Validate LTX userscript syntax
+        run: node --check userscripts/ltx-batch-checker.user.js
       - name: Unit tests
         run: npm test
       - name: Security audit
