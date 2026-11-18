@@ -238,8 +238,8 @@ function normalizeLtxCode(code) {
     .normalize('NFKC')
     .trim()
     .toUpperCase()
-    .replace(/[\\u2010-\\u2015\\u2212]/g, '-')
-    .replace(/\\s+/g, '')
+    .replace(/[\u2010-\u2015\u2212]/g, '-')
+    .replace(/\s+/g, '')
 }
 
 // Match only the official item.code field; a fuzzy search hit is not a positive result.
