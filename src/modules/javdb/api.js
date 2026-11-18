@@ -1,7 +1,6 @@
 import { parseRetryAfter } from './retry'
 
 const API_BASE = 'https://jdforrepam.com/api'
-const PROXY_BASE = import.meta.env.VITE_JAVDB_PROXY_URL?.replace(/\/$/, '')
 
 function add32(a, b) { return (a + b) & 0xffffffff }
 function cmn(q, a, b, x, s, t) {
