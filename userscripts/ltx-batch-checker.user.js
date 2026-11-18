@@ -183,7 +183,7 @@
   function parseInput(value) {
     const seen = new Set()
     const codes = []
-    for (const part of value.split(/[\r\n,，;；]+/)) {
+    for (const part of value.split(/[\s,，;；]+/u)) {
       const code = normalizeCode(part)
       if (!code || seen.has(code) || code.length > 64) continue
       seen.add(code)
@@ -239,7 +239,7 @@
   const panel = document.createElement('section')
   panel.className = 'panel'
   panel.innerHTML = '<header class="head"><div class="brand">LTX 批量番号检测<span class="sub">同源查询 · 精确匹配 · 不保存作品详情</span></div><button type="button" class="minimize" title="收起面板" aria-label="收起面板">−</button></header>' +
-    '<div class="body"><p class="hint">每行一个番号，也支持逗号或分号分隔；单次最多 300 个，按顺序逐个查询。</p>' +
+    '<div class="body"><p class="hint">每行一个番号，也支持空格、逗号或分号分隔；单次最多 300 个，按顺序逐个查询。</p>' +
     '<textarea class="input" placeholder="IPX-811&#10;SSIS-123&#10;ABW-208"></textarea>' +
     '<div class="actions"><button type="button" class="primary start">开始检测</button><button type="button" class="cancel" disabled>停止</button>' +
     '<button type="button" class="copy" disabled>复制结果</button><button type="button" class="export" disabled>导出 CSV</button><button type="button" class="clear">清空</button></div>' +
