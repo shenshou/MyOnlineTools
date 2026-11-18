@@ -33,7 +33,9 @@ jobs:
       - name: Unit tests
         run: npm test
       - name: Security audit
-        run: npm audit --audit-level=moderate
+        run: |
+          npm audit --json > npm-audit.json || true
+          node scripts/check-npm-audit.mjs npm-audit.json
       - name: Build
         env:
           VITE_JAVDB_PROXY_URL: ${{ vars.VITE_JAVDB_PROXY_URL }}
