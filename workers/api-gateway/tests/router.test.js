@@ -4,11 +4,12 @@ import { getRoute } from '../router.js'
 import { hasOnlyAllowedQueryParams, isValidHeaderValue } from '../security.js'
 import { isAllowedOrigin } from '../cors.js'
 
-test('LTX only exposes the two fixed POST endpoints', () => {
-  assert.equal(getRoute('/api/ltx/api/crypto/session', 'POST')?.service, 'ltx')
-  assert.equal(getRoute('/api/ltx/api/items/query', 'POST')?.service, 'ltx')
-  assert.equal(getRoute('/api/ltx/api/other', 'POST'), null)
-  assert.equal(getRoute('/api/ltx/api/items/query', 'GET'), null)
+test('LTX routes preserve the upstream path for response AAD verification', () => {
+  assert.equal(getRoute('/api/crypto/session', 'POST')?.service, 'ltx')
+  assert.equal(getRoute('/api/items/query', 'POST')?.service, 'ltx')
+  assert.equal(getRoute('/api/ltx/api/crypto/session', 'POST'), null)
+  assert.equal(getRoute('/api/ltx/api/items/query', 'POST'), null)
+  assert.equal(getRoute('/api/items/query', 'GET'), null)
 })
 
 test('query parameters and forwarded header values are constrained', () => {

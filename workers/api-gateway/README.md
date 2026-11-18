@@ -1,6 +1,6 @@
 # MyOnlineTools API Gateway
 
-A single, service-aware Cloudflare Worker for explicitly allowlisted upstream APIs.
+A single-purpose Cloudflare Worker for the LTX API integration.
 
 ## Current status
 
@@ -10,10 +10,12 @@ This directory is an isolated LTX integration foundation. It is not deployed, an
 
 | Gateway route | Method | Fixed upstream |
 | --- | --- | --- |
-| `/api/ltx/api/crypto/session` | POST | `https://ltxlib.dpdns.org/api/crypto/session` |
-| `/api/ltx/api/items/query` | POST | `https://ltxlib.dpdns.org/api/items/query` |
+| `/api/crypto/session` | POST | `https://ltxlib.dpdns.org/api/crypto/session` |
+| `/api/items/query` | POST | `https://ltxlib.dpdns.org/api/items/query` |
 
-JavDB is deliberately not registered in this Gateway. Its current frontend integration already works directly and does not need migration. The legacy `workers/javdb-proxy` directory is also left untouched in this change.
+The Gateway deliberately preserves the upstream pathnames. LTX binds the response authentication data to the request path; adding a gateway-only path prefix would cause browser-side AES-GCM verification to fail.
+
+JavDB is deliberately not registered in this Gateway. Its current frontend integration already works directly and does not need migration. The legacy `workers/javdb-proxy` directory is left untouched.
 
 The caller cannot provide or override an upstream host. Every route has a fixed upstream origin, method, path matcher, query allowlist, header allowlist, and JSON body limit/schema.
 

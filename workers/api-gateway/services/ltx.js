@@ -3,7 +3,10 @@ const UPSTREAM_ORIGIN = 'https://ltxlib.dpdns.org'
 export const ltxRoutes = [
   {
     service: 'ltx',
-    match: /^\/api\/ltx\/api\/crypto\/session$/,
+    // Keep the public path identical to the upstream path. The LTX response
+    // authentication data binds the request pathname, so rewriting it would
+    // make browser-side AES-GCM verification fail.
+    match: /^\/api\/crypto\/session$/,
     methods: ['POST'],
     upstreamOrigin: UPSTREAM_ORIGIN,
     upstreamPath: () => '/api/crypto/session',
@@ -22,7 +25,7 @@ export const ltxRoutes = [
   },
   {
     service: 'ltx',
-    match: /^\/api\/ltx\/api\/items\/query$/,
+    match: /^\/api\/items\/query$/,
     methods: ['POST'],
     upstreamOrigin: UPSTREAM_ORIGIN,
     upstreamPath: () => '/api/items/query',
