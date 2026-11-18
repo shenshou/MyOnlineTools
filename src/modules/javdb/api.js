@@ -1,3 +1,5 @@
+import { parseRetryAfter } from './retry'
+
 const API_BASE = 'https://jdforrepam.com/api'
 const PROXY_BASE = import.meta.env.VITE_JAVDB_PROXY_URL?.replace(/\/$/, '')
 
@@ -71,7 +73,7 @@ async function request(path, params = {}, headers = {}, signal, credentials = 'o
   try { data = text ? JSON.parse(text) : null } catch { data = text }
   if (!response.ok || data?.success === 0) {
     const message = data?.message || data?.error || `HTTP ${response.status}`
-    throw Object.assign(new Error(message), { status: response.status, response: data, action: data?.action, url: url.toString() })
+    throw Object.assign(new Error(message), { status: response.status, retryAfterMs: parseRetryAfter(response.headers?.get?.('retry-after')), response: data, action: data?.action, url: url.toString() })
   }
   return { data, status: response.status, url: url.toString() }
 }
