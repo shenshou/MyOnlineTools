@@ -13,7 +13,7 @@ export function parseRetryAfter(value, now = Date.now()) {
 export function isRetryableRequestError(error) {
   if (!error || error.name === 'AbortError') return false
   if (RETRYABLE_HTTP_STATUSES.has(Number(error.status))) return true
-  return error.status == null && error.name === 'TypeError'
+  return error.status == null && (error.name === 'TypeError' || error.cause?.name === 'TypeError')
 }
 
 export function getRetryDelayMs(error, retryNumber) {
