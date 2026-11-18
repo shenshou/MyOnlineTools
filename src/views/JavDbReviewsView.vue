@@ -104,6 +104,7 @@ function setTaskError(task, error, stage) {
 }
 
 async function requestWithRetry(task, stage, request, { pauseQueueOnExhausted = false } = {}) {
+  task.retryStage = stage
   let retryNumber = 0
 
   while (true) {
@@ -234,7 +235,7 @@ async function startQueue() {
           await processTask(task, { pauseQueueOnExhausted: true })
           break
         } catch (error) {
-          setTaskError(task, error, task.status === 'searching' || task.status === 'retrying' ? '影片搜索/请求' : '评论获取')
+          setTaskError(task, error, task.retryStage === 'searching' ? '影片搜索' : '评论获取')
           if (cancelled) break
           if (!error?.pauseQueue) break
 
