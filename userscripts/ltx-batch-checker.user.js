@@ -4,6 +4,8 @@
 // @version      1.0.0
 // @description  在 LTX 官方网站内批量检测番号是否存在，只输出精确匹配结果。
 // @match        https://ltxlib.dpdns.org/*
+// @downloadURL  https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/ltx-batch-checker.user.js
+// @updateURL    https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/ltx-batch-checker.user.js
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
@@ -330,7 +332,7 @@
           } catch (error) {
             if (error?.status === 429) {
               const delay = retryDelay(error)
-              if (delay === null || delay > 15 * 60 * 1000) throw new Error('上游触发频率限制，请稍后手动重新检测')
+              if (delay === null || delay > 15 * 60 * 1000) throw error
               setMessage('收到 HTTP 429，遵循服务器 Retry-After，' + Math.ceil(delay / 1000) + ' 秒后重试当前番号。', 'warn')
               await sleep(delay, signal)
               exists = await checkOne(item.code, signal)
@@ -350,6 +352,11 @@
             for (const pending of results.slice(index + 1)) pending.status = 'stopped'
             break
           }
+          if (error?.status === 429) {
+            setMessage('上游持续返回 HTTP 429，已停止剩余任务；请等待一段时间后再试。', 'warn')
+            for (const pending of results.slice(index + 1)) pending.status = 'stopped'
+            break
+          }
         }
         renderRows()
         if (index < results.length - 1 && !signal.aborted && item.status !== 'error') await sleep(REQUEST_GAP_MS, signal)
@@ -363,7 +370,7 @@
       setRunning(false)
       renderRows()
       if (stopped) setMessage('已停止检测；尚未完成的番号没有被判定为不存在。', 'warn')
-      else if (!message.classList.contains('error')) setMessage('批量检测完成。存在、不存在与失败结果已分别统计。')
+      else if (!message.classList.contains('error') && !message.classList.contains('warn')) setMessage('批量检测完成。存在、不存在与失败结果已分别统计。')
     }
   }
 
