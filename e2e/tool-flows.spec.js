@@ -301,6 +301,8 @@ test('JavDB review panels expand and collapse independently per number', async (
 
   const cards = page.locator('.task-card')
   await expect(cards).toHaveCount(2)
+  await page.waitForTimeout(1000)
+  console.log('JavDB mock task state:', await cards.allTextContents())
   await expect(page.locator('.task-status.completed')).toHaveCount(2, { timeout: 30000 })
   await expect(cards.nth(0).getByRole('button', { name: '展开评论' })).toBeVisible()
   await expect(cards.nth(1).getByRole('button', { name: '展开评论' })).toBeVisible()
