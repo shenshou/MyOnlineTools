@@ -1,0 +1,21 @@
+name: API Gateway Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'workers/api-gateway/**'
+      - '.github/workflows/api-gateway-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run API Gateway tests
+        run: node --test workers/api-gateway/tests/*.test.js
