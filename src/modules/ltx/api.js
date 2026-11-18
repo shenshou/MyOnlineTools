@@ -231,3 +231,27 @@ export async function searchLtxItems(code, { onStage } = {}) {
 
   throw new Error('加密会话重建后仍无法完成请求')
 }
+
+
+function normalizeLtxCode(code) {
+  return String(code ?? '')
+    .normalize('NFKC')
+    .trim()
+    .toUpperCase()
+    .replace(/[\\u2010-\\u2015\\u2212]/g, '-')
+    .replace(/\\s+/g, '')
+}
+
+// Match only the official item.code field; a fuzzy search hit is not a positive result.
+export function hasExactLtxCode(items, targetCode) {
+  const target = normalizeLtxCode(targetCode)
+  if (!target || !Array.isArray(items)) return false
+
+  return items.some(item => normalizeLtxCode(item?.code) === target)
+}
+
+// Public minimal-result API: callers receive only a boolean, never the item records.
+export async function checkLtxCodeExists(code, options) {
+  const result = await searchLtxItems(code, options)
+  return hasExactLtxCode(result.items, code)
+}
