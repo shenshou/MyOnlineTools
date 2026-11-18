@@ -4,6 +4,7 @@ import { ArrowLeft, Play, Pause, Square, RotateCcw, ExternalLink, MessageSquareT
 import { useRouter } from 'vue-router'
 import { Button, Textarea, Select } from '../components/ui'
 import { getReviews } from '../modules/javdb/api'
+import { getRetryDelayMs, isRetryableRequestError, MAX_REQUEST_RETRIES } from '../modules/javdb/retry'
 import { searchJavDbMovies, isExactMovieCode, parseMovieNumbers } from '../modules/javdb/search'
 import { filterReviews, getReviewItems, parseKeywords, splitTextByKeywords, uniqueReviews } from '../modules/javdb/batch'
 
@@ -102,14 +103,45 @@ function setTaskError(task, error, stage) {
   task.error = `${stage}失败：${error?.message || '未知错误'}`
 }
 
-async function fetchAllReviews(task, movie) {
+async function requestWithRetry(task, stage, request, { pauseQueueOnExhausted = false } = {}) {
+  let retryNumber = 0
+
+  while (true) {
+    await waitForResume()
+    try {
+      const result = await request()
+      task.error = ''
+      if (task.status === 'retrying') task.status = stage
+      return result
+    } catch (error) {
+      if (error?.name === 'AbortError' || cancelled || !isRetryableRequestError(error)) throw error
+      if (retryNumber >= MAX_REQUEST_RETRIES) {
+        error.retryExhausted = true
+        error.pauseQueue = pauseQueueOnExhausted
+        throw error
+      }
+
+      retryNumber += 1
+      const delay = getRetryDelayMs(error, retryNumber)
+      const reason = error.status ? `HTTP ${error.status}` : '网络连接异常'
+      task.status = 'retrying'
+      task.error = `${reason}，将在 ${Math.ceil(delay / 1000)} 秒后自动重试（第 ${retryNumber}/${MAX_REQUEST_RETRIES} 次）`
+      await wait(delay, activeController?.signal)
+      await waitForResume()
+    }
+  }
+}
+
+async function fetchAllReviews(task, movie, options = {}) {
   const collected = []
   const limit = 20
   let page = 1
 
   while (page <= 200) {
-    await beforeRequest()
-    const result = await getReviews(movie.movieId, page, limit, { signal: activeController.signal })
+    const result = await requestWithRetry(task, 'fetching', async () => {
+      await beforeRequest()
+      return getReviews(movie.movieId, page, limit, { signal: activeController.signal })
+    }, options)
     const pageReviews = getReviewItems(result)
     if (!pageReviews.length) break
 
@@ -130,7 +162,7 @@ async function fetchAllReviews(task, movie) {
   return collected
 }
 
-async function processTask(task) {
+async function processTask(task, options = {}) {
   task.status = 'searching'
   task.error = ''
   task.warning = ''
@@ -139,8 +171,10 @@ async function processTask(task) {
   task.reviews = []
   task.pagesFetched = 0
 
-  await beforeRequest()
-  const searchResult = await searchJavDbMovies(task.number, { signal: activeController.signal })
+  const searchResult = await requestWithRetry(task, 'searching', async () => {
+    await beforeRequest()
+    return searchJavDbMovies(task.number, { signal: activeController.signal })
+  }, options)
   const exactMatches = searchResult.results.filter(item => isExactMovieCode(item.title, task.number))
   task.candidates = exactMatches
   task.suggestions = exactMatches.length ? [] : searchResult.results.slice(0, 5)
@@ -159,7 +193,7 @@ async function processTask(task) {
 
   task.movie = exactMatches[0]
   task.status = 'fetching'
-  await fetchAllReviews(task, task.movie)
+  await fetchAllReviews(task, task.movie, options)
   task.status = 'completed'
 }
 
@@ -195,11 +229,19 @@ async function startQueue() {
   try {
     for (const task of tasks.value) {
       if (cancelled) break
-      try {
-        await processTask(task)
-      } catch (error) {
-        setTaskError(task, error, task.status === 'searching' ? '影片搜索' : '评论获取')
-        if (cancelled) break
+      while (!cancelled) {
+        try {
+          await processTask(task, { pauseQueueOnExhausted: true })
+          break
+        } catch (error) {
+          setTaskError(task, error, task.status === 'searching' || task.status === 'retrying' ? '影片搜索/请求' : '评论获取')
+          if (cancelled) break
+          if (!error?.pauseQueue) break
+
+          isPaused.value = true
+          pageError.value = `${task.number} 连续请求失败，已暂停整个队列。请稍后点击“继续”，程序会从当前番号重新尝试；后续番号不会丢失。`
+          await waitForResume()
+        }
       }
     }
   } finally {
@@ -223,6 +265,7 @@ function pauseQueue() {
 }
 
 function resumeQueue() {
+  pageError.value = ''
   isPaused.value = false
   wakePausedQueue()
 }
@@ -262,7 +305,7 @@ async function fetchSelectedCandidate(task, candidate) {
   cancelled = false
   activeController = new AbortController()
   try {
-    await fetchAllReviews(task, candidate)
+    await fetchAllReviews(task, candidate, { pauseQueueOnExhausted: false })
     task.status = 'completed'
   } catch (error) {
     setTaskError(task, error, '评论获取')
@@ -310,6 +353,7 @@ function statusLabel(status) {
     queued: '排队中',
     searching: '搜索影片中',
     fetching: '获取评论中',
+    retrying: '等待重试',
     completed: '已完成',
     failed: '失败',
     'not-found': '未找到',
@@ -541,7 +585,7 @@ onBeforeUnmount(() => {
 .task-status{padding:3px 7px;border-radius:5px;background:var(--surface-2);font-size:9px;color:var(--muted)}
 .task-status.completed{color:var(--success);background:var(--success-soft)}
 .task-status.failed,.task-status.cancelled{color:var(--danger);background:var(--danger-soft)}
-.task-status.searching,.task-status.fetching{color:var(--info);background:var(--info-soft)}
+.task-status.searching,.task-status.fetching,.task-status.retrying{color:var(--info);background:var(--info-soft)}
 .task-status.ambiguous,.task-status.not-found{color:var(--warning);background:var(--warning-soft)}
 .matched-movie{display:flex;align-items:flex-start;gap:9px;margin-top:10px;padding:10px;background:var(--surface-2);border-radius:var(--radius-md);font-size:10px}
 .matched-movie>svg{flex-shrink:0;color:var(--primary);margin-top:2px}
