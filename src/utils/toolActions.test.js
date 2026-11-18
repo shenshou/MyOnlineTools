@@ -55,6 +55,26 @@ describe('runTool', () => {
     expect(await runTool('jav-code-extract', '这段文本没有番号，日期是 2026-11-17。')).toBe('')
   })
 
+  it('recognizes common formats and unknown alphanumeric prefixes', async () => {
+    const input = 'ssis-123 ABP_456 FC2-PPV-1234567 1pondo-123456 10musume-123456 heyzo-1234 tokyo-hot-1234 QWERTY-123 300MIUM-456'
+    expect(await runTool('jav-code-extract', input)).toBe(
+      'SSIS-123 ABP-456 FC2-PPV-1234567 1PONDO-123456 10MUSUME-123456 HEYZO-1234 TOKYO-HOT-1234 QWERTY-123 300MIUM-456',
+    )
+  })
+
+  it('rejects ordinal numbers and descriptive labels', async () => {
+    const input = '2nd-46 and 3rd_12 Version-123 Chapter-456 Model-2026 Part-03 Episode-12'
+    expect(await runTool('jav-code-extract', input)).toBe('')
+  })
+
+  it('does not interpret spaced ordinal text as a JAV code', async () => {
+    expect(await runTool('jav-code-extract', 'ABW-208 终极初体验 2nd 46：3')).toBe('ABW-208')
+  })
+
+  it('normalizes underscores and preserves duplicate occurrences', async () => {
+    expect(await runTool('jav-code-extract', 'abp_456 ABP-456')).toBe('ABP-456 ABP-456')
+  })
+
   it('preserves repeated code occurrences in the source text', async () => {
     expect(await runTool('jav-code-extract', 'ssis-123 与 SSIS-123')).toBe('SSIS-123 SSIS-123')
   })
