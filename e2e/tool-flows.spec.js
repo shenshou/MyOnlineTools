@@ -294,7 +294,7 @@ test('JavDB review panels expand and collapse independently per number', async (
   })
 
   await page.goto('/MyOnlineTools/#/javdb-reviews')
-  await page.locator('textarea').first().fill('SSIS-123\\nABP-456')
+  await page.locator('textarea').first().fill('SSIS-123\nABP-456')
   await page.getByLabel('请求间隔').selectOption('2000')
   await page.getByLabel('评论展示模式').selectOption('all')
   await page.getByRole('button', { name: '开始批量搜索' }).click()
