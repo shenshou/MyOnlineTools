@@ -3,7 +3,7 @@ const UPSTREAM_ORIGIN = 'https://jdforrepam.com'
 export const javdbRoutes = [
   {
     service: 'javdb',
-    match: /^\\/api\\/javdb\\/v2\\/search$/,
+    match: /^\/api\/javdb\/v2\/search$/,
     methods: ['GET'],
     upstreamOrigin: UPSTREAM_ORIGIN,
     upstreamPath: () => '/api/v2/search',
@@ -19,7 +19,7 @@ export const javdbRoutes = [
   },
   {
     service: 'javdb',
-    match: /^\\/api\\/javdb\\/v1\\/movies\\/[A-Za-z0-9_-]+\\/reviews$/,
+    match: /^\/api\/javdb\/v1\/movies\/[A-Za-z0-9_-]+\/reviews$/,
     methods: ['GET'],
     upstreamOrigin: UPSTREAM_ORIGIN,
     upstreamPath: url => url.pathname.replace('/api/javdb/', '/api/'),

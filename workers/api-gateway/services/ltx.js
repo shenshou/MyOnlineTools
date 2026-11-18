@@ -3,7 +3,7 @@ const UPSTREAM_ORIGIN = 'https://ltxlib.dpdns.org'
 export const ltxRoutes = [
   {
     service: 'ltx',
-    match: /^\\/api\\/ltx\\/api\\/crypto\\/session$/,
+    match: /^\/api\/ltx\/api\/crypto\/session$/,
     methods: ['POST'],
     upstreamOrigin: UPSTREAM_ORIGIN,
     upstreamPath: () => '/api/crypto/session',
@@ -22,7 +22,7 @@ export const ltxRoutes = [
   },
   {
     service: 'ltx',
-    match: /^\\/api\\/ltx\\/api\\/items\\/query$/,
+    match: /^\/api\/ltx\/api\/items\/query$/,
     methods: ['POST'],
     upstreamOrigin: UPSTREAM_ORIGIN,
     upstreamPath: () => '/api/items/query',

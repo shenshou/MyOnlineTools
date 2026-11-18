@@ -12,7 +12,8 @@ export function isValidHeaderValue(value, maxLength = 512) {
   return typeof value === 'string' &&
     value.length > 0 &&
     value.length <= maxLength &&
-    !/[\\r\\n]/.test(value)
+    !value.includes(String.fromCharCode(10)) &&
+    !value.includes(String.fromCharCode(13))
 }
 
 export function hasOnlyAllowedQueryParams(url, allowedParams) {
