@@ -6,7 +6,13 @@ A single-purpose Cloudflare Worker for the LTX API integration.
 
 This directory is an isolated LTX integration foundation. It is not deployed, and the frontend does not call it. The existing JavDB review/search request path is intentionally out of scope and remains unchanged.
 
-**Live upstream validation is currently blocked.** An anonymous POST to `https://ltxlib.dpdns.org/api/crypto/session` returns HTTP 403 with `{\"error\":\"请从网页上操作\",\"reason\":\"origin\"}` both when sent with the GitHub Pages Origin and when sent without an Origin header. This is an upstream origin-policy rejection, not a CORS preflight failure. The Gateway must not spoof the upstream site's Origin to evade this check. A legitimate integration requires the upstream operator to authorize `https://shenshou.github.io` (or provide an official server-to-server API/proxy mechanism). Until then, do not deploy or migrate the frontend.
+**Live browser and upstream validation is currently blocked.**
+
+- The actual GitHub Pages browser Network panel shows the direct `/api/crypto/session` OPTIONS preflight returning HTTP 403. The subsequent fetch is marked CORS error because the browser blocks the POST after the failed preflight. This confirms a preflight failure on the direct browser-to-upstream path; it does not reveal the POST status because the browser never sends that POST.
+- Separately, anonymous POST checks from GitHub Actions to `https://ltxlib.dpdns.org/api/crypto/session` returned HTTP 403 with `{"error":"请从网页上操作","reason":"origin"}` both when sent with `Origin: https://shenshou.github.io` and without an Origin header.
+- This Worker is designed to answer browser OPTIONS preflight locally with 204 and the configured CORS headers. That can solve the browser-to-Worker preflight layer only. It does **not** establish that the Worker-to-upstream POST will be accepted; the separate Actions POST checks indicate that it may still be rejected.
+- The Gateway must not spoof the upstream site's Origin or otherwise evade its origin policy. Do not deploy or migrate the frontend until a legitimate upstream request path is validated.
+- A legitimate integration requires the upstream operator to authorize the GitHub Pages origin / Gateway server-to-server requests, or provide an official integration method.
 
 ## Routes
 
@@ -26,7 +32,7 @@ The caller cannot provide or override an upstream host. Every route has a fixed 
 - Browser Origins are allowlisted by `ALLOWED_ORIGINS` (comma-separated). Origin checks are CORS controls, not authentication.
 - Cookies, Authorization, Referer, and arbitrary incoming headers are never forwarded.
 - LTX ECDH/HKDF/AES-GCM session negotiation and response decryption remain in the browser. This Worker only forwards the two fixed JSON endpoints.
-- LTX session requests are intentionally sent upstream without browser cookies. This must be verified against the public anonymous flow before the frontend is migrated.
+- LTX session requests are intentionally sent upstream without browser cookies. This must be verified against an authorized upstream flow before the frontend is migrated.
 - Upstream redirects are blocked; response headers are allowlisted; responses are not cached.
 - Request bodies, cookies, session identifiers, and response payloads are not logged.
 - The Worker is publicly reachable. Origin allowlisting is not protection against non-browser clients; deploy-level rate limiting and abuse monitoring should be configured before production use.
@@ -41,4 +47,4 @@ node --test workers/api-gateway/tests/*.test.js
 
 ## Deployment
 
-Do not deploy or configure the frontend while the upstream origin-policy rejection remains unresolved. After the upstream operator authorizes the GitHub Pages origin or provides an official integration method, repeat the anonymous session and encrypted query checks through the Gateway. Only after those checks pass should the Worker be deployed and the LTX frontend be migrated in a separate change.
+Do not deploy or configure the frontend while the upstream origin-policy rejection remains unresolved. After a legitimate upstream integration method is confirmed, repeat the session and encrypted query checks through the Gateway. Only after those checks pass should the Worker be deployed and the LTX frontend be migrated in a separate change.
