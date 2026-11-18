@@ -13,7 +13,7 @@ const mode = ref('keywords')
 const keywordsInput = ref('')
 const sinceDate = ref('')
 const dateInput = ref(null)
-const activeTaskId = ref('')
+const expandedTaskIds = ref(new Set())
 const requestInterval = ref('5000')
 const tasks = ref([])
 const isRunning = ref(false)
@@ -38,7 +38,6 @@ const finishedCount = computed(() => tasks.value.filter(task => ['completed', 'f
 const completedCount = computed(() => tasks.value.filter(task => task.status === 'completed').length)
 const totalReviews = computed(() => tasks.value.reduce((sum, task) => sum + task.reviews.length, 0))
 const displayedReviews = computed(() => tasks.value.reduce((sum, task) => sum + visibleReviews(task).length, 0))
-const activeTask = computed(() => tasks.value.find(task => task.id === activeTaskId.value) || null)
 
 let activeController = null
 let cancelled = false
@@ -173,7 +172,7 @@ async function startQueue() {
   }
 
   pageError.value = ''
-  activeTaskId.value = ''
+  expandedTaskIds.value = new Set()
   tasks.value = parsedNumbers.value.map((number, index) => ({
     id: `${number}-${index}`,
     number,
@@ -187,7 +186,6 @@ async function startQueue() {
     warning: '',
   }))
 
-  activeTaskId.value = tasks.value[0]?.id || ''
   isRunning.value = true
   isPaused.value = false
   cancelled = false
@@ -294,8 +292,11 @@ function openDatePicker() {
   }
 }
 
-function selectTask(task) {
-  activeTaskId.value = task.id
+function toggleTaskReviews(task) {
+  const next = new Set(expandedTaskIds.value)
+  if (next.has(task.id)) next.delete(task.id)
+  else next.add(task.id)
+  expandedTaskIds.value = next
 }
 
 function highlightParts(value) {
@@ -414,8 +415,8 @@ onBeforeUnmount(() => {
         <span class="muted">{{ finishedCount }} / {{ tasks.length }} 项已处理</span>
       </div>
       <div class="result-toolbar">
-        <span>选择番号查看评论 · {{ displayedReviews }} 条符合当前筛选条件</span>
-        <span>评论详情一次只展示一个番号，避免页面过长</span>
+        <span>每个番号可独立展开评论 · {{ displayedReviews }} 条符合当前筛选条件</span>
+        <span>评论默认收起，可同时展开多个番号</span>
       </div>
       <div class="progress-track"><div class="progress-value" :style="{ width: `${tasks.length ? finishedCount / tasks.length * 100 : 0}%` }"></div></div>
       <div class="summary-grid">
@@ -432,8 +433,8 @@ onBeforeUnmount(() => {
             <span v-if="task.status === 'completed'" class="task-review-count">{{ reviewCountForTask(task) }} 条匹配</span>
           </div>
           <div class="task-actions">
-            <Button v-if="task.status === 'completed'" size="sm" :variant="activeTaskId === task.id ? 'primary' : 'secondary'" @click="selectTask(task)">
-              {{ activeTaskId === task.id ? '正在查看' : '查看评论' }}
+            <Button v-if="task.status === 'completed'" size="sm" variant="secondary" :aria-expanded="expandedTaskIds.has(task.id)" @click="toggleTaskReviews(task)">
+              {{ expandedTaskIds.has(task.id) ? '收起评论' : '展开评论' }}
             </Button>
             <Button v-if="['failed', 'not-found'].includes(task.status) && !isRunning" size="sm" variant="secondary" @click="retryTask(task)">
               <RotateCcw :size="13" /> 重试
@@ -461,23 +462,23 @@ onBeforeUnmount(() => {
           <a v-for="candidate in task.suggestions" :key="candidate.movieId" :href="candidate.url" target="_blank" rel="noopener noreferrer">{{ candidate.title }}</a>
         </div>
 
-
+        <section v-if="expandedTaskIds.has(task.id)" class="task-reviews">
+          <div class="task-reviews-heading">
+            <div><strong>{{ task.number }} · 评论列表</strong><span>已获取 {{ task.reviews.length }} 条 · {{ task.pagesFetched }} 页</span></div>
+            <strong>{{ mode === 'keywords' ? '匹配 ' : '展示 ' }}{{ reviewCountForTask(task) }} 条</strong>
+          </div>
+          <div v-if="visibleReviews(task).length" class="review-list">
+            <article v-for="(review, index) in visibleReviews(task)" :key="review.id || index" class="review-item">
+              <div class="review-meta"><strong>{{ review.username || '匿名用户' }}</strong><span>{{ formatDate(review.created_at) }}</span></div>
+              <p><template v-for="(part, partIndex) in highlightParts(review.content || '（空评论）')" :key="partIndex"><mark v-if="part.matched" class="keyword-highlight">{{ part.text }}</mark><span v-else>{{ part.text }}</span></template></p>
+              <div class="review-foot"><span>评分：{{ review.score ?? '未评分' }}</span><span>赞：{{ review.likes_count ?? 0 }}</span></div>
+            </article>
+          </div>
+          <div v-else class="empty-result">{{ mode === 'keywords' ? '没有评论符合当前关键词和日期条件。' : '该影片暂无评论。' }}</div>
+        </section>
       </article>
 
-      <section v-if="activeTask?.status === 'completed'" class="selected-reviews">
-        <div class="selected-reviews-heading">
-          <div><strong>{{ activeTask.number }} · 评论列表</strong><span>已获取 {{ activeTask.reviews.length }} 条 · {{ activeTask.pagesFetched }} 页</span></div>
-          <strong>{{ mode === 'keywords' ? '匹配 ' : '展示 ' }}{{ reviewCountForTask(activeTask) }} 条</strong>
-        </div>
-        <div v-if="visibleReviews(activeTask).length" class="review-list">
-          <article v-for="(review, index) in visibleReviews(activeTask)" :key="review.id || index" class="review-item">
-            <div class="review-meta"><strong>{{ review.username || '匿名用户' }}</strong><span>{{ formatDate(review.created_at) }}</span></div>
-            <p><template v-for="(part, partIndex) in highlightParts(review.content || '（空评论）')" :key="partIndex"><mark v-if="part.matched" class="keyword-highlight">{{ part.text }}</mark><span v-else>{{ part.text }}</span></template></p>
-            <div class="review-foot"><span>评分：{{ review.score ?? '未评分' }}</span><span>赞：{{ review.likes_count ?? 0 }}</span></div>
-          </article>
-        </div>
-        <div v-else class="empty-result">{{ mode === 'keywords' ? '没有评论符合当前关键词和日期条件。' : '该影片暂无评论。' }}</div>
-      </section>
+
     </section>
 
     <aside class="footnote">
@@ -525,16 +526,16 @@ onBeforeUnmount(() => {
 .result-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:12px 0;color:var(--muted);font-size:10px}
 .result-toolbar>div{display:flex;gap:6px}
 .result-toolbar button{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);padding:5px 8px;font-size:10px;cursor:pointer}
-.selected-reviews .review-list{padding:0 12px}
+.task-reviews .review-list{padding:0 12px}
 .task-heading,.task-title{display:flex;align-items:center;gap:9px}
 .task-heading{justify-content:space-between}
 .task-actions{display:flex;align-items:center;gap:6px}
 .task-review-count{font-size:9px;color:var(--muted)}
-.selected-reviews{margin-top:14px;border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden}
-.selected-reviews-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;background:var(--surface-2);font-size:11px}
-.selected-reviews-heading>div{display:grid;gap:4px}
-.selected-reviews-heading span{font-size:9px;color:var(--muted)}
-.selected-reviews-heading>strong{color:var(--primary);white-space:nowrap}
+.task-reviews{margin-top:14px;border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden}
+.task-reviews-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;background:var(--surface-2);font-size:11px}
+.task-reviews-heading>div{display:grid;gap:4px}
+.task-reviews-heading span{font-size:9px;color:var(--muted)}
+.task-reviews-heading>strong{color:var(--primary);white-space:nowrap}
 .keyword-highlight{background:var(--warning-soft);color:var(--text);border-radius:3px;padding:0 2px;font-weight:750}
 .task-title strong{font-size:13px}
 .task-status{padding:3px 7px;border-radius:5px;background:var(--surface-2);font-size:9px;color:var(--muted)}
