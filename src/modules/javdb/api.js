@@ -1,7 +1,6 @@
 import { parseRetryAfter } from './retry'
 
 const API_BASE = 'https://jdforrepam.com/api'
-const PROXY_BASE = import.meta.env.VITE_JAVDB_PROXY_URL?.replace(/\/$/, '')
 
 function add32(a, b) { return (a + b) & 0xffffffff }
 function cmn(q, a, b, x, s, t) {
@@ -53,14 +52,13 @@ export function buildSignature(timestamp = Math.floor(Date.now() / 1000)) {
 }
 
 async function request(path, params = {}, headers = {}, signal, credentials = 'omit') {
-  const proxyEnabled = Boolean(PROXY_BASE)
-  const url = new URL(`${proxyEnabled ? PROXY_BASE : API_BASE}${path}`)
+  const url = new URL(`${API_BASE}${path}`)
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)))
   let response
   try {
     response = await fetch(url, {
       method: 'GET',
-      headers: { [proxyEnabled ? 'x-jd-signature' : 'jdsignature']: buildSignature(), ...headers },
+      headers: { jdsignature: buildSignature(), ...headers },
       mode: 'cors',
       credentials,
       signal,
