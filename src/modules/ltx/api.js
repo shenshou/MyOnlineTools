@@ -234,6 +234,9 @@ export async function findExactLtxCodeInPages(firstPage, fetchPage, targetCode) 
     if (!Number.isSafeInteger(page.total) || page.total < 0) {
       throw new Error('搜索响应缺少有效的 total，无法确认番号不存在')
     }
+    if (typeof page.snapshot !== 'string' || !page.snapshot) {
+      throw new Error('搜索响应缺少有效的 snapshot，无法确认番号不存在')
+    }
     if (!Number.isSafeInteger(page.offset) || page.offset !== expectedOffset) {
       throw new Error('搜索分页位置不连续，无法确认番号不存在')
     }
@@ -284,11 +287,13 @@ async function searchLtxItems(code, { onStage } = {}) {
       metadata: true,
     }
 
+    let activeSnapshot = snapshot
     const fetchPage = offset => requestLtxApi('/api/items/query', {
       method: 'POST',
       onStage,
       body: {
         ...baseBody,
+        snapshot: activeSnapshot,
         offset,
         metadata: offset === 0,
       },
@@ -296,6 +301,10 @@ async function searchLtxItems(code, { onStage } = {}) {
 
     try {
       const firstPage = await fetchPage(0)
+      if (typeof firstPage?.snapshot !== 'string' || !firstPage.snapshot) {
+        throw new Error('搜索响应缺少有效的 snapshot，无法继续分页')
+      }
+      activeSnapshot = firstPage.snapshot
       const exists = await findExactLtxCodeInPages(firstPage, async offset => {
         onStage?.(`正在检查搜索结果（${offset + 1} 起）`)
         return fetchPage(offset)
