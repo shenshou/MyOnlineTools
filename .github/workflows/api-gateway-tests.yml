@@ -1,6 +1,11 @@
 name: API Gateway Tests
 
 on:
+  push:
+    branches: [feat/api-gateway-foundation]
+    paths:
+      - 'workers/api-gateway/**'
+      - '.github/workflows/api-gateway-tests.yml'
   pull_request:
     branches: [main]
     paths:
