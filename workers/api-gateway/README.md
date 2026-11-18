@@ -6,6 +6,8 @@ A single-purpose Cloudflare Worker for the LTX API integration.
 
 This directory is an isolated LTX integration foundation. It is not deployed, and the frontend does not call it. The existing JavDB review/search request path is intentionally out of scope and remains unchanged.
 
+**Live upstream validation is currently blocked.** An anonymous POST to `https://ltxlib.dpdns.org/api/crypto/session` returns HTTP 403 with `{\"error\":\"请从网页上操作\",\"reason\":\"origin\"}` both when sent with the GitHub Pages Origin and when sent without an Origin header. This is an upstream origin-policy rejection, not a CORS preflight failure. The Gateway must not spoof the upstream site's Origin to evade this check. A legitimate integration requires the upstream operator to authorize `https://shenshou.github.io` (or provide an official server-to-server API/proxy mechanism). Until then, do not deploy or migrate the frontend.
+
 ## Routes
 
 | Gateway route | Method | Fixed upstream |
@@ -39,4 +41,4 @@ node --test workers/api-gateway/tests/*.test.js
 
 ## Deployment
 
-Do not deploy or configure the frontend yet. First verify the LTX anonymous session flow and encrypted query compatibility through the Gateway. Only after those checks pass should the Worker be deployed and the LTX frontend be migrated in a separate change.
+Do not deploy or configure the frontend while the upstream origin-policy rejection remains unresolved. After the upstream operator authorizes the GitHub Pages origin or provides an official integration method, repeat the anonymous session and encrypted query checks through the Gateway. Only after those checks pass should the Worker be deployed and the LTX frontend be migrated in a separate change.
