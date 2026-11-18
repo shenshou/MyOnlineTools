@@ -27,7 +27,7 @@ h1{margin:9px 0;font-size:25px}
 p,li{color:var(--muted);font-size:13px;line-height:1.8}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0}
 .actions a{display:inline-flex;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:var(--radius-md);color:var(--text);text-decoration:none;font-size:12px}
-.actions a.primary{border-color:var(--primary);background:var(--primary);color:white}
+.actions a.primary{border-color:var(--primary);background:var(--primary);color:var(--on-primary)}
 ol{padding-left:20px}
 .note{margin-top:24px;padding:12px;border-radius:var(--radius-md);background:var(--surface-2)}
 </style>
