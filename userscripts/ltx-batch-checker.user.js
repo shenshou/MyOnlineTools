@@ -359,7 +359,7 @@
           }
         }
         renderRows()
-        if (index < results.length - 1 && !signal.aborted && item.status !== 'error') await sleep(REQUEST_GAP_MS, signal)
+        if (index < results.length - 1 && !signal.aborted) await sleep(REQUEST_GAP_MS, signal)
       }
     } catch (error) {
       if (error?.name !== 'AbortError') setMessage(error?.message || '批量检测中断。', 'error')
