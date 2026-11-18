@@ -23,7 +23,7 @@
   const encodeBase64Url = bytes => {
     let binary = ''
     for (const byte of bytes) binary += String.fromCharCode(byte)
-    return btoa(binary).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '')
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
   }
 
   const decodeBase64Url = value => {
@@ -38,8 +38,8 @@
     .normalize('NFKC')
     .trim()
     .toUpperCase()
-    .replace(/[\\u2010-\\u2015\\u2212]/g, '-')
-    .replace(/\\s+/g, '')
+    .replace(/[\u2010-\u2015\u2212]/g, '-')
+    .replace(/\s+/g, '')
 
   function responseAad(sessionId, requestId, method, pathname, status, encoding) {
     return encoder.encode(JSON.stringify([
