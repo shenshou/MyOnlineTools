@@ -1,3 +1,5 @@
+import { parseRetryAfter } from './retry'
+
 export const JAVDB_BASE_URL = 'https://javdb.com'
 
 export function normalizeMovieCode(value) {
@@ -87,6 +89,7 @@ export async function searchJavDbMovies(number, { signal } = {}) {
   if (!response.ok) {
     throw Object.assign(new Error(`JavDB 搜索请求失败（HTTP ${response.status}）`), {
       status: response.status,
+      retryAfterMs: parseRetryAfter(response.headers?.get?.('retry-after')),
       url: response.url || url.href,
     })
   }
