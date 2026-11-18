@@ -34,7 +34,6 @@ async function main() {
   const sessionResponse = await fetch(API_ORIGIN + '/api/crypto/session', {
     method: 'POST',
     headers: {
-      Origin: 'https://shenshou.github.io',
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
@@ -90,7 +89,6 @@ async function main() {
   const queryResponse = await fetch(API_ORIGIN + '/api/items/query', {
     method: 'POST',
     headers: {
-      Origin: 'https://shenshou.github.io',
       'Content-Type': 'application/json',
       'X-LTX-Session': session.sid,
       'X-LTX-Request': requestId,
