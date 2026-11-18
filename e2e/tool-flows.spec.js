@@ -259,3 +259,60 @@ test('navigation layout fits a narrow mobile viewport', async ({ page }) => {
   await expect(page.locator('.website-list')).toBeVisible()
   await expect(page.locator('.website-list-row').first()).toBeVisible()
 })
+
+test('JavDB review panels expand and collapse independently per number', async ({ page }) => {
+  await page.route('https://javdb.com/search**', async route => {
+    const url = new URL(route.request().url())
+    const number = url.searchParams.get('q')
+    const movieId = number === 'SSIS-123' ? 'movie-a' : 'movie-b'
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: `<div class="movie-list"><div class="item"><a href="/v/${movieId}"><div class="video-title">${number}</div></a></div></div>`,
+    })
+  })
+
+  await page.route('https://jdforrepam.com/api/v1/movies/*/reviews**', async route => {
+    const url = new URL(route.request().url())
+    const movieId = url.pathname.split('/').at(-2)
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          reviews: [{
+            id: `${movieId}-review`,
+            username: '测试用户',
+            created_at: '2026-11-18T00:00:00Z',
+            content: `review for ${movieId}`,
+            score: 5,
+            likes_count: 1,
+          }],
+        },
+      }),
+    })
+  })
+
+  await page.goto('/MyOnlineTools/#/javdb-reviews')
+  await page.locator('textarea').first().fill('SSIS-123\\nABP-456')
+  await page.getByLabel('请求间隔').selectOption('2000')
+  await page.getByLabel('评论展示模式').selectOption('all')
+  await page.getByRole('button', { name: '开始批量搜索' }).click()
+
+  const cards = page.locator('.task-card')
+  await expect(cards).toHaveCount(2)
+  await expect(page.locator('.task-status.completed')).toHaveCount(2, { timeout: 30000 })
+  await expect(cards.nth(0).getByRole('button', { name: '展开评论' })).toBeVisible()
+  await expect(cards.nth(1).getByRole('button', { name: '展开评论' })).toBeVisible()
+  await expect(page.locator('.task-reviews')).toHaveCount(0)
+
+  await cards.nth(0).getByRole('button', { name: '展开评论' }).click()
+  await cards.nth(1).getByRole('button', { name: '展开评论' }).click()
+  await expect(page.locator('.task-reviews')).toHaveCount(2)
+  await expect(cards.nth(0).locator('.task-reviews')).toContainText('review for movie-a')
+  await expect(cards.nth(1).locator('.task-reviews')).toContainText('review for movie-b')
+
+  await cards.nth(0).getByRole('button', { name: '收起评论' }).click()
+  await expect(page.locator('.task-reviews')).toHaveCount(1)
+  await expect(cards.nth(1).locator('.task-reviews')).toBeVisible()
+})
