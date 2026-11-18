@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { ArrowLeft, CheckCircle2, CircleAlert, LoaderCircle, Search } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { Button } from '../components/ui'
-import { checkLtxCodeExists } from '../modules/ltx/api'
+import { checkLtxCodeViaOfficialPage } from '../modules/ltx/bridge'
 
 const router = useRouter()
 const code = ref('')
@@ -24,7 +24,7 @@ async function runSearch() {
   stage.value = '准备验证'
 
   try {
-    exists.value = await checkLtxCodeExists(target, {
+    exists.value = await checkLtxCodeViaOfficialPage(target, {
       onStage: value => { stage.value = value },
     })
     stage.value = '验证完成'
@@ -43,9 +43,9 @@ async function runSearch() {
       <div>
         <span class="ltx-eyebrow">LTX CODE CHECK</span>
         <h1>番号存在性检测</h1>
-        <p>输入番号，只返回是否存在，不展示作品详情。</p>
+        <p>输入番号，只返回是否存在，不展示作品详情。需要安装一次同源检测辅助脚本。</p>
       </div>
-      <a href="https://ltxlib.dpdns.org" target="_blank" rel="noreferrer">Jasna-LTX ↗</a>
+      <div class="ltx-heading-links"><a href="https://raw.githubusercontent.com/shenshou/MyOnlineTools/feat/ltx-same-origin-bridge/userscripts/ltx-existence-bridge.user.js" target="_blank" rel="noreferrer">安装辅助脚本 ↗</a><a href="https://ltxlib.dpdns.org" target="_blank" rel="noreferrer">Jasna-LTX ↗</a></div>
     </header>
 
     <section class="ltx-panel">
@@ -78,7 +78,7 @@ async function runSearch() {
         <strong v-else-if="exists === false">false · 不存在</strong>
         <span v-else>等待输入番号</span>
       </div>
-      <p class="ltx-footnote">页面只显示 true / false，不展示或保存作品详情。检测过程中会在浏览器内存中处理接口返回结果，以便进行番号精确匹配。</p>
+      <p class="ltx-footnote">页面只显示 true / false，不展示或保存作品详情。检测通过 LTX 官方页面中的辅助脚本执行同源请求；辅助脚本仅向本页面回传布尔结果。</p>
     </section>
 
     <footer class="ltx-footer">
@@ -94,7 +94,7 @@ async function runSearch() {
 .ltx-eyebrow{color:var(--primary);font-size:10px;font-weight:750;letter-spacing:1.3px}
 .ltx-heading h1{margin:8px 0 6px;font-size:25px;letter-spacing:-.5px}
 .ltx-heading p{margin:0;color:var(--muted);font-size:12px}
-.ltx-heading a{color:var(--primary);font-size:11px;white-space:nowrap}
+.ltx-heading-links{display:flex;gap:14px;align-items:center}.ltx-heading-links a{color:var(--primary);font-size:11px;white-space:nowrap}
 .ltx-panel{padding:20px;border:1px solid var(--line);border-radius:var(--radius-xl);background:var(--surface);box-shadow:var(--shadow)}
 .ltx-search-form label{display:block;margin-bottom:8px;font-size:11px;font-weight:650}
 .ltx-input-row{display:flex;gap:9px}
