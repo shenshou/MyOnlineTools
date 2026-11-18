@@ -264,7 +264,7 @@ test('JavDB review panels expand and collapse independently per number', async (
   await page.route('https://javdb.com/search**', async route => {
     const url = new URL(route.request().url())
     const number = url.searchParams.get('q')
-    const movieId = number === 'SSIS-123' ? 'movie-a' : 'movie-b'
+    const movieId = number === 'SSIS-123' ? 'moviea' : 'movieb'
     await route.fulfill({
       status: 200,
       contentType: 'text/html',
@@ -301,8 +301,6 @@ test('JavDB review panels expand and collapse independently per number', async (
 
   const cards = page.locator('.task-card')
   await expect(cards).toHaveCount(2)
-  await page.waitForTimeout(1000)
-  console.log('JavDB mock task state:', await cards.allTextContents())
   await expect(page.locator('.task-status.completed')).toHaveCount(2, { timeout: 30000 })
   await expect(cards.nth(0).getByRole('button', { name: '展开评论' })).toBeVisible()
   await expect(cards.nth(1).getByRole('button', { name: '展开评论' })).toBeVisible()
@@ -311,8 +309,8 @@ test('JavDB review panels expand and collapse independently per number', async (
   await cards.nth(0).getByRole('button', { name: '展开评论' }).click()
   await cards.nth(1).getByRole('button', { name: '展开评论' }).click()
   await expect(page.locator('.task-reviews')).toHaveCount(2)
-  await expect(cards.nth(0).locator('.task-reviews')).toContainText('review for movie-a')
-  await expect(cards.nth(1).locator('.task-reviews')).toContainText('review for movie-b')
+  await expect(cards.nth(0).locator('.task-reviews')).toContainText('review for moviea')
+  await expect(cards.nth(1).locator('.task-reviews')).toContainText('review for movieb')
 
   await cards.nth(0).getByRole('button', { name: '收起评论' }).click()
   await expect(page.locator('.task-reviews')).toHaveCount(1)
