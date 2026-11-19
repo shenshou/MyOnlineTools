@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import {
   Search, Plus, LayoutGrid, List, Star, ExternalLink, Pencil, Trash2, X, Save,
   Download, Upload, LogIn, LogOut, Check, AlertCircle, Globe, Settings, FileJson,
-  Info, ArrowUp, ArrowDown
+  Info, ArrowUp, ArrowDown, RefreshCw
 } from 'lucide-vue-next'
 import { useNavigationFilters } from '../modules/navigation/useNavigationFilters'
 import WebsiteFavicon from '../modules/navigation/components/WebsiteFavicon.vue'
@@ -22,7 +22,7 @@ const { showToast } = useToast()
 const { confirm } = useConfirm()
 const sortOptions = [{value:'custom',label:'自定义排序'},{value:'newest',label:'最近添加'},{value:'updated',label:'最近更新'},{value:'name-asc',label:'名称升序'},{value:'name-desc',label:'名称降序'}]
 const categoryIconOptions = [{value:'bot',label:'🤖 AI'},{value:'code',label:'💻 开发'},{value:'palette',label:'🎨 设计'},{value:'clapperboard',label:'🎬 娱乐'},{value:'download',label:'⬇️ 下载'},{value:'graduation-cap',label:'🎓 学习'},{value:'globe',label:'🌐 实用'},{value:'folder',label:'📁 文件夹'}]
-const { data, baseline, loading, loadError, dirty, snapshot, loadData } = useNavigationData()
+const { data, baseline, loading, refreshing, loadError, dirty, snapshot, loadData, refreshData } = useNavigationData()
 const search = ref('')
 const selectedCategory = ref('all')
 const selectedTag = ref('')
@@ -135,6 +135,7 @@ function iconFor(category) {
     <section class="nav-heading">
       <div><div class="nav-eyebrow">PERSONAL BOOKMARK LIBRARY</div><h1>网址导航</h1><p>集中收藏、整理和管理常用网站。</p></div>
       <div class="nav-heading-actions">
+        <Button class="nav-btn nav-btn-light" :loading="refreshing" :disabled="refreshing || dirty" :title="dirty ? '请先保存或导出未保存的更改' : '从 GitHub 获取最新网址数据'" @click="refreshData" type="button" variant="secondary"><RefreshCw :size="15"/>{{refreshing ? '正在更新…' : '更新网址'}}</Button>
         <Button class="nav-btn nav-btn-light" @click="showAdmin=true" type="button" variant="secondary"><LogIn :size="15"/>{{admin ? '管理员已授权' : '管理员登录'}}</Button>
         <Button class="nav-btn nav-btn-primary" @click="admin ? openAdd() : showAdmin=true" type="button" variant="primary"><Plus :size="16"/>添加网址</Button>
       </div>
@@ -147,7 +148,7 @@ function iconFor(category) {
       <div class="nav-summary-status"><span :class="dirty ? 'status-unsaved' : 'status-saved'"></span>{{dirty ? '有未保存的更改' : '数据已同步'}}</div>
     </section>
 
-    <div v-if="loadError" class="nav-alert nav-alert-error"><AlertCircle :size="16"/>{{loadError}} <button @click="loadData">重试</button></div>
+    <div v-if="loadError" class="nav-alert nav-alert-error"><AlertCircle :size="16"/>{{loadError}} <button @click="refreshData">重试</button></div>
     <div v-if="message" class="nav-alert nav-alert-success"><Check :size="16"/>{{message}}<button @click="message=''"><X :size="14"/></button></div>
     <div v-if="errorMessage" class="nav-alert nav-alert-error"><AlertCircle :size="16"/>{{errorMessage}}<button v-if="saveConflict" type="button" @click="exportData">导出待保存数据</button><button type="button" @click="errorMessage='';saveConflict=false"><X :size="14"/></button></div>
 
