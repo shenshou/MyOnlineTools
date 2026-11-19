@@ -44,7 +44,7 @@
 
 /* Shared component integration and consistent keyboard focus */
 /* Keep a visible focus ring for controls that do not contain editable text. */
-:where(button, a, [tabindex]):not(input):focus-visible {
+:where(button, a, [tabindex]):not(input):not(textarea):not(select):focus-visible {
   outline: 0;
   box-shadow: var(--focus-ring);
 }
@@ -154,7 +154,11 @@ button:disabled { cursor: not-allowed; }
 .nav-form .field input:focus,
 .nav-form-row .field input:focus,
 .nav-field-label input:focus {
-  border-color: var(--primary);
+  border-color: var(--focus-border);
+}
+
+.regex-options input:focus {
+  border-color: var(--focus-border);
 }
 .nav-add-category > .field { flex: 1; min-width: 0; }
 .nav-category-edit > .field { flex: 0 0 90px; width: 90px; }
