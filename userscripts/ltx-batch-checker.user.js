@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         LTX 批量番号存在性检测
 // @namespace    https://github.com/shenshou/MyOnlineTools
-// @version      1.1.0
-// @description  在 LTX 官方网站内批量检测番号，并获取存在番号的磁链或 ed2k 资源链接。
+// @version      1.2.0
+// @description  在 LTX 官方网站内批量检测番号、获取资源链接，并可精简 ed2k 文件名。
 // @match        https://ltxlib.dpdns.org/*
 // @downloadURL  https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/ltx-batch-checker.user.js
 // @updateURL    https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/ltx-batch-checker.user.js
@@ -294,10 +294,25 @@
     if (failedGroups && !signal.aborted) setMessage('存在性检测已完成，但有 ' + failedGroups + ' 组资源链接获取失败；存在性结果未受影响。', 'warn')
   }
 
+  const COMPACT_ED2K_KEY = 'ltx-batch-checker-compact-ed2k'
+  let compactEd2k = false
+  try { compactEd2k = localStorage.getItem(COMPACT_ED2K_KEY) === 'true' } catch {}
+
+  function getCopyResourceLink(item) {
+    const link = item?.resourceLink
+    if (!compactEd2k || item?.resourceType !== 'ed2k' || typeof link !== 'string') return link || ''
+    const match = link.match(/^(ed2k:\/\/\|file\|)([^|]+)(\|[^|]*\|[^|]*\|\/)$/i)
+    if (!match) return link
+    const extensionMatch = match[2].match(/(\.[A-Za-z0-9]{1,10})$/)
+    const code = normalizeCode(item.code)
+    if (!extensionMatch || !/^[A-Z0-9][A-Z0-9-]{0,63}$/.test(code)) return link
+    return match[1] + code + '.restoredLTX' + extensionMatch[1] + match[3]
+  }
+
   function copyResourceLinks(type) {
     const links = results
       .filter(item => item.status === 'exists' && item.resourceStatus === 'available' && (!type || item.resourceType === type))
-      .map(item => item.resourceLink)
+      .map(getCopyResourceLink)
     if (!links.length) {
       setMessage(type === 'magnet' ? '没有可复制的磁力链接。' : type === 'ed2k' ? '没有可复制的 ed2k 链接。' : '没有可复制的资源链接。', 'warn')
       return
@@ -351,7 +366,7 @@
     '.hint{margin:0 0 8px;color:#475569;font-size:11px}textarea{display:block;width:100%;min-height:112px;resize:vertical;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;font:12px/1.5 ui-monospace,monospace;outline:none}' +
     'textarea:focus{border-color:#2563eb;box-shadow:0 0 0 2px #2563eb22}.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}' +
     '.actions button{border:1px solid #cbd5e1;border-radius:7px;padding:7px 10px;background:#fff;color:#0f172a;font-size:11px}.actions .primary{border-color:#2563eb;background:#2563eb;color:#fff}' +
-    '.actions button:disabled{opacity:.45;cursor:not-allowed}.row-copy{border:1px solid #cbd5e1;border-radius:6px;padding:4px 7px;background:#eff6ff;color:#1d4ed8;font-size:10px;cursor:pointer}.interval-label{display:inline-block;margin:10px 7px 0 0;color:#475569;font-size:11px}.interval{margin-top:10px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#0f172a;font:11px system-ui}.summary{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 8px;color:#475569;font-size:11px}.summary b{color:#0f172a}' +
+    '.actions button:disabled{opacity:.45;cursor:not-allowed}.row-copy{border:1px solid #cbd5e1;border-radius:6px;padding:4px 7px;background:#eff6ff;color:#1d4ed8;font-size:10px;cursor:pointer}.interval-label{display:inline-block;margin:10px 7px 0 0;color:#475569;font-size:11px}.interval{margin-top:10px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#0f172a;font:11px system-ui}.compact-option{display:flex;align-items:center;gap:6px;margin-top:10px;color:#475569;font-size:11px;cursor:pointer}.compact-option input{margin:0}.summary{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 8px;color:#475569;font-size:11px}.summary b{color:#0f172a}' +
     '.progress{height:5px;overflow:hidden;border-radius:9px;background:#e2e8f0}.bar{height:100%;width:0;background:#2563eb;transition:width .15s}' +
     '.message{margin:8px 0;color:#475569;font-size:11px;overflow-wrap:anywhere}.message.warn{color:#b45309}.message.error{color:#b91c1c}' +
     '.results{max-height:260px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px}table{width:100%;border-collapse:collapse;font-size:11px}' +
@@ -371,6 +386,7 @@
     '<div class="actions"><button type="button" class="primary start">开始检测</button><button type="button" class="cancel" disabled>停止</button>' +
     '<button type="button" class="copy" disabled>复制结果</button><button type="button" class="copy-magnets" disabled>复制全部磁链</button><button type="button" class="copy-ed2k" disabled>复制全部 ed2k</button><button type="button" class="copy-links" disabled>复制全部资源</button><button type="button" class="clear">清空</button></div>' +
     '<label class="interval-label" for="ltx-request-interval">请求间隔</label><select class="interval" id="ltx-request-interval" aria-label="请求间隔"><option value="1000" selected>1 秒（默认）</option><option value="3000">3 秒</option><option value="5000">5 秒</option><option value="8000">8 秒</option><option value="10000">10 秒</option><option value="15000">15 秒</option></select>' +
+    '<label class="compact-option"><input class="compact-ed2k" type="checkbox"> 精简 ed2k 文件名（番号.restoredLTX+扩展名）</label>' +
     '<div class="summary"><span>总数 <b class="total">0</b></span><span>存在 <b class="yes">0</b></span><span>不存在 <b class="no">0</b></span><span>失败 <b class="failed">0</b></span><span>资源 <b class="resources">0</b></span></div>' +
     '<div class="progress"><div class="bar"></div></div><p class="message" role="status">等待输入番号。</p>' +
     '<div class="results"><table><thead><tr><th>番号</th><th>检测结果</th><th>资源链接</th></tr></thead><tbody></tbody></table></div>' +
@@ -523,6 +539,12 @@
     }
   }
 
+  const compactEd2kToggle = $('.compact-ed2k')
+  compactEd2kToggle.checked = compactEd2k
+  compactEd2kToggle.addEventListener('change', event => {
+    compactEd2k = event.target.checked
+    try { localStorage.setItem(COMPACT_ED2K_KEY, String(compactEd2k)) } catch {}
+  })
   $('.interval').addEventListener('change', event => {
     const selected = Number(event.target.value)
     if (REQUEST_INTERVALS.includes(selected)) requestGapMs = selected
@@ -546,7 +568,7 @@
     if (!button) return
     const item = results[Number(button.dataset.index)]
     if (!item?.resourceLink) return
-    navigator.clipboard.writeText(item.resourceLink).then(() => setMessage(item.code + ' 的 ' + item.resourceType + ' 链接已复制。'))
+    navigator.clipboard.writeText(getCopyResourceLink(item)).then(() => setMessage(item.code + ' 的 ' + item.resourceType + ' 链接已复制。'))
       .catch(() => setMessage('复制失败，请检查浏览器剪贴板权限。', 'warn'))
   })
   copyButton.addEventListener('click', async () => {
