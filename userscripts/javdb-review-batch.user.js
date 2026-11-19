@@ -4,6 +4,8 @@
 // @version      1.0.0
 // @description  在 JavDB 当前登录会话中批量搜索番号并获取评论，支持暂停、续跑与断点恢复
 // @match        https://javdb.com/*
+// @downloadURL  https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/javdb-review-batch.user.js
+// @updateURL    https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/javdb-review-batch.user.js
 // @grant        none
 // @run-at       document-idle
 // @noframes
