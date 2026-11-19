@@ -7,8 +7,13 @@ if (!existsSync(reportPath)) throw new Error(`Lighthouse report not found: ${rep
 
 const report = JSON.parse(readFileSync(reportPath, 'utf8'))
 const performanceScore = report.categories?.performance?.score
+const bestPracticesScore = report.categories?.['best-practices']?.score
+
 if (typeof performanceScore !== 'number') {
   throw new Error('Lighthouse report does not contain a performance score')
+}
+if (typeof bestPracticesScore !== 'number') {
+  throw new Error('Lighthouse report does not contain a best-practices score')
 }
 
 function metric(id, digits = 0) {
@@ -27,6 +32,7 @@ const record = {
   lighthouseVersion: report.lighthouseVersion ?? null,
   finalUrl: report.finalUrl ?? null,
   performanceScore: Math.round(performanceScore * 100),
+  bestPracticesScore: Math.round(bestPracticesScore * 100),
   metrics: {
     firstContentfulPaint: metric('first-contentful-paint'),
     largestContentfulPaint: metric('largest-contentful-paint'),
@@ -58,7 +64,8 @@ function displayMetric(id, digits = 0) {
   return `${value.toFixed(digits)}${id === 'cumulativeLayoutShift' ? '' : ' ms'}`
 }
 
-console.log(`Lighthouse mobile performance score: ${record.performanceScore}/100`)
+console.log(`Lighthouse mobile Performance score: ${record.performanceScore}/100`)
+console.log(`Lighthouse mobile Best Practices score: ${record.bestPracticesScore}/100`)
 console.log(`First Contentful Paint: ${displayMetric('firstContentfulPaint')}`)
 console.log(`Largest Contentful Paint: ${displayMetric('largestContentfulPaint')}`)
 console.log(`Total Blocking Time: ${displayMetric('totalBlockingTime')}`)
