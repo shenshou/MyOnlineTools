@@ -2,22 +2,23 @@ import { computed, ref } from 'vue'
 import { defaultNavigationData } from './defaultData'
 import { normalizeNavigationData } from './validation'
 import { fetchNavigationData } from './github'
+import { readNavigationCache, writeNavigationCache } from './cache'
 
-const NAVIGATION_CACHE_KEY = 'mot-navigation-data-cache'
-
-function isValidNavigationData(value) {
+function normalizeCachedData(value) {
   try {
-    normalizeNavigationData(value)
-    return true
+    return value ? normalizeNavigationData(value) : null
   } catch {
-    return false
+    return null
   }
 }
 
 export function useNavigationData() {
-  const data = ref(structuredClone(defaultNavigationData))
-  const baseline = ref('')
-  const loading = ref(true)
+  const cachedData = normalizeCachedData(readNavigationCache())
+  const data = ref(cachedData || structuredClone(defaultNavigationData))
+  const baseline = ref(JSON.stringify(data.value))
+  const loading = ref(!cachedData)
+  const refreshing = ref(false)
+  const hasCache = ref(Boolean(cachedData))
   const loadError = ref('')
 
   function snapshot() {
@@ -26,40 +27,39 @@ export function useNavigationData() {
 
   const dirty = computed(() => snapshot() !== baseline.value)
 
-  async function loadData() {
-    loading.value = true
+  async function refreshData() {
+    if (refreshing.value) return
+    if (dirty.value) {
+      loadError.value = '当前有尚未保存的修改。请先保存或导出修改，再更新远端数据，以免覆盖本地编辑。'
+      return
+    }
+
+    refreshing.value = true
+    if (!hasCache.value) loading.value = true
     loadError.value = ''
+
     try {
       const remote = await fetchNavigationData()
-      if (!isValidNavigationData(remote)) throw new Error('网址数据格式不正确')
-      data.value = normalizeNavigationData(remote)
+      const normalized = normalizeNavigationData(remote)
+      data.value = normalized
       baseline.value = snapshot()
-      try {
-        const serialized = JSON.stringify(remote)
-        if (sessionStorage.getItem(NAVIGATION_CACHE_KEY) !== serialized) {
-          sessionStorage.setItem(NAVIGATION_CACHE_KEY, serialized)
-        }
-      } catch {
-        // Cache storage is optional; it must not prevent a successful remote load.
-      }
+      hasCache.value = true
+      writeNavigationCache(remote)
     } catch (error) {
-      // Preserve the last successful tab-scoped snapshot during temporary network/API failures.
-      try {
-        const cached = JSON.parse(sessionStorage.getItem(NAVIGATION_CACHE_KEY) || 'null')
-        if (isValidNavigationData(cached)) {
-          data.value = normalizeNavigationData(cached)
-          baseline.value = snapshot()
-          loadError.value = `暂时无法读取 GitHub 最新数据，当前显示本标签页上次成功读取的数据。原因：${error.message}`
-        } else {
-          loadError.value = `无法读取 GitHub 网址数据：${error.message}`
-        }
-      } catch {
-        loadError.value = `无法读取 GitHub 网址数据：${error.message}`
-      }
+      loadError.value = hasCache.value
+        ? `更新失败，继续显示上次缓存的网址数据。原因：${error.message}`
+        : `无法读取 GitHub 网址数据：${error.message}`
     } finally {
       loading.value = false
+      refreshing.value = false
     }
   }
 
-  return { data, baseline, loading, loadError, dirty, snapshot, loadData }
+  async function loadData() {
+    if (hasCache.value) return data.value
+    await refreshData()
+    return data.value
+  }
+
+  return { data, baseline, loading, refreshing, loadError, dirty, snapshot, loadData, refreshData }
 }
