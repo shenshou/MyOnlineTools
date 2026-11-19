@@ -1,4 +1,5 @@
 import { saveNavigationData } from './github'
+import { writeNavigationCache } from './cache'
 
 export function useNavigationPersistence({
   data,
@@ -27,7 +28,7 @@ export function useNavigationPersistence({
       const sha = await saveNavigationData(payload, baseline.value)
       data.value = payload
       baseline.value = snapshot()
-      window.dispatchEvent(new CustomEvent('mot-navigation-data-updated', { detail: payload }))
+      writeNavigationCache(payload)
       onMessage(`已保存到 GitHub。Commit：${sha.slice(0, 7)}`)
       return sha
     } catch (error) {
