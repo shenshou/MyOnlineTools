@@ -132,13 +132,7 @@ function handleGlobalShortcut(event) {
   }
 }
 function handleNavigationDataUpdated(event) {
-  const websites = event.detail?.websites
-  if (!Array.isArray(websites)) return
-  const categories = new Map((event.detail?.categories || []).map(category => [category.id, category.name]))
-  navigationWebsites.value = websites.map(website => ({
-    ...website,
-    categoryName: categories.get(website.categoryId) || '未分类',
-  }))
+  syncSearchWebsites(event.detail)
 }
 function closeMobileNav() { menuOpen.value = false }
 
