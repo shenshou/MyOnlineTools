@@ -1,4 +1,4 @@
-const CANDIDATE_PATTERN = /(?<![A-Z0-9_-])(?=[A-Z0-9_-]*[A-Z])([A-Z0-9]{2,12}(?:[-_][A-Z0-9]{2,12}){0,2})[-_]([0-9]{2,7}(?:[-_][0-9]{1,5})?)(?![A-Z0-9_-])/gi
+const CANDIDATE_PATTERN = /(?<![A-Z0-9_-])(?=[A-Z0-9_-]*[A-Z])([A-Z0-9]{2,12}(?:[-_][A-Z0-9]{2,12}){0,2})[-_]([0-9]{2,7}[A-Z]?(?:[-_](?:[0-9]{1,5}|[A-Z]))?)(?![A-Z0-9_-])/gi
 
 // Common descriptive labels that should not be interpreted as studio prefixes.
 const NON_CODE_PREFIXES = new Set([
@@ -18,10 +18,12 @@ function isPlausiblePrefix(prefix) {
 /**
  * Extract syntactically plausible JAV identifiers from free text.
  * Unknown prefixes are allowed; this is not a studio whitelist.
+ * Supports numeric suffixes and single-letter suffixes, including PASN-027-U
+ * and inline forms such as ABC-123A.
  * Without a complete canonical catalogue, syntax-based extraction cannot guarantee
  * that every candidate is a real identifier.
  */
-export function extractJavCodes(input) {
+export function extractJavCodes(input, separator = ' ') {
   const text = String(input ?? '').toUpperCase()
   const matches = []
   for (const match of text.matchAll(CANDIDATE_PATTERN)) {
@@ -29,5 +31,5 @@ export function extractJavCodes(input) {
     if (!isPlausiblePrefix(rawPrefix)) continue
     matches.push(`${rawPrefix}-${rawNumber}`.replace(/_/g, '-'))
   }
-  return matches.join(' ')
+  return matches.join(String(separator ?? ' '))
 }

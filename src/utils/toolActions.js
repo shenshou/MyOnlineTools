@@ -45,7 +45,7 @@ export async function runTool(id, input, options = {}) {
       return `HEX：#${full.toUpperCase()}\nRGB：rgb(${r}, ${g}, ${b})\nHSL：hsl(${Math.round((h + 360) % 360)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`
     }
     case 'jav-code-extract':
-      return extractJavCodes(value)
+      return extractJavCodes(value, options.separator ?? ' ')
     case 'magnet': {
       const prefix = 'magnet:?xt=urn:btih:'
       return value.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
