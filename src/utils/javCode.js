@@ -6,7 +6,7 @@ const NON_CODE_PREFIXES = new Set([
   'DISC', 'VOL', 'VOLUME', 'PAGE', 'SCENE', 'TRACK', 'CD', 'DVD', 'BLU', 'YEAR',
   'MONTH', 'DAY', 'DATE', 'NO', 'NUMBER',
 ])
-const ORDINAL_PREFIX = /^\\d+(?:ST|ND|RD|TH)$/i
+const ORDINAL_PREFIX = /^\d+(?:ST|ND|RD|TH)$/i
 
 function isPlausiblePrefix(prefix) {
   const segments = prefix.split(/[-_]/)
