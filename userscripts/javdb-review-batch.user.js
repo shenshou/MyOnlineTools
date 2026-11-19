@@ -156,7 +156,7 @@
     let retries=0,rateRetries=0
     while(true){
       await beforeRequest()
-      try{const result=await request();rateRetries=0;return result}
+      try{const result=await request();rateRetries=0;task.status=stage==='search'?'searching':'fetching';return result}
       catch(error){
         if(error.name==='AbortError'||state.stopped)throw error
         task.error=errorText(error,stage)
