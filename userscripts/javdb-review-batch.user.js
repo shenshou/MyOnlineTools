@@ -255,7 +255,7 @@
 
   const host=document.createElement('div');host.id='javdb-review-batch-userscript';document.documentElement.appendChild(host)
   const shadow=host.attachShadow({mode:'open'})
-  shadow.innerHTML=<style>
+  shadow.innerHTML=`<style>
 :host{all:initial;position:fixed;z-index:2147483000;right:18px;bottom:18px;font:13px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:#20242b}
 *{box-sizing:border-box}button,input,textarea,select{font:inherit}
 .launcher{border:0;border-radius:999px;padding:11px 16px;background:#2563eb;color:#fff;box-shadow:0 5px 22px #0003;cursor:pointer;font-weight:700}
@@ -297,7 +297,7 @@ input,select{width:100%;padding:8px;border:1px solid #cfd5df;border-radius:8px;b
 <div class="message" id="message" role="status"></div><div class="stats" id="stats"></div><div id="results"></div>
 </div>
 <footer class="foot">断点保存在当前标签页 sessionStorage；不读取、保存或导出账号密码与 Cookie。脚本不会绕过验证码或上游访问限制。</footer>
-</section>
+</section>`
   const $=s=>shadow.querySelector(s),launcher=$('.launcher'),panel=$('.panel'),message=$('#message'),results=$('#results')
   const numbers=$('#numbers'),interval=$('#interval'),keywords=$('#keywords')
   function label(status){return({queued:'排队中',searching:'搜索影片中',fetching:'获取评论中',retrying:'等待重试',completed:'已完成',failed:'失败','not-found':'未找到',ambiguous:'需要选择',paused:'已暂停'})[status]||status}
