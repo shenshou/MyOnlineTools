@@ -5,12 +5,21 @@ import { ArrowLeft, Copy, Check, RotateCcw, Play, Star, Info, WandSparkles } fro
 import { tools } from '../data/tools'
 import { usePreferences } from '../stores/preferences'
 import { runTool } from '../utils/toolActions'
-import { Button, Input, Tabs, EmptyState } from '../components/ui'
+import { Button, Input, Select, Tabs, EmptyState } from '../components/ui'
 const props=defineProps({id:String})
 const router=useRouter(), prefs=usePreferences()
 const tool=computed(()=>tools.find(t=>t.id===props.id))
 const input=ref(''), output=ref(''), error=ref(''), copied=ref(false), busy=ref(false)
 const mode=ref('format'), pattern=ref(''), flags=ref('g')
+const separatorMode=ref('space'), customSeparator=ref('')
+const separatorOptions=[
+  {value:'space',label:'空格（默认）'},
+  {value:'newline',label:'换行'},
+  {value:'comma-en',label:'英文逗号（,）'},
+  {value:'comma-zh',label:'中文逗号（，）'},
+  {value:'semicolon-en',label:'英文分号（;）'},
+  {value:'custom',label:'自定义'},
+]
 const modes={
  json:[['format','格式化'],['minify','压缩']],
  base64:[['encode','编码'],['decode','解码']],
@@ -19,13 +28,15 @@ const modes={
 }
 const modeOptions=computed(()=>modes[props.id]||[])
 const modeTabs=computed(()=>modeOptions.value.map(([value,label])=>({value,label})))
-watch(()=>props.id,()=>{input.value='';output.value='';error.value='';mode.value=modes[props.id]?.[0]?.[0]||'default';prefs.touch(props.id)},{immediate:true})
+watch(()=>props.id,()=>{input.value='';output.value='';error.value='';mode.value=modes[props.id]?.[0]?.[0]||'default';separatorMode.value='space';customSeparator.value='';prefs.touch(props.id)},{immediate:true})
 const placeholder=computed(()=>({json:'粘贴 JSON 数据…',base64:'输入要编码或解码的文本…',url:'输入 URL 或需要编码的内容…','text-stats':'在这里输入或粘贴文本…',case:'例如：hello world / helloWorld / hello_world',color:'#6366f1',regex:'输入需要匹配的文本…',magnet:'每行输入一个 BTIH 哈希或磁力链接…','jav-code-extract':'粘贴包含番号的文本，例如：作品信息、评论或文件名…'})[props.id]||'输入内容…')
-const description=computed(()=>({json:'校验 JSON，并将其格式化为易读结构或压缩为单行。',base64:'支持 UTF-8 中文文本的 Base64 编码和解码。',url:'对 URL 组件进行百分号编码或解码。','text-stats':'统计字符、非空白字符、单词、行数以及 UTF-8 字节数。',case:'支持 camelCase、PascalCase、snake_case、kebab-case 和大小写转换。',color:'输入 HEX 颜色值，查看对应 RGB 和 HSL。',regex:'输入正则表达式和 flags，查看所有匹配项。',magnet:'每行输入一个 BTIH 哈希或磁力链接；已有标准磁力链接会保持不变，缺少前缀的内容会自动补全。','jav-code-extract':'从文本中提取常见 JAV 番号（如 SSIS-123、FC2-PPV-1234567），统一转换为大写，并用空格连接结果。'})[props.id])
+const description=computed(()=>({json:'校验 JSON，并将其格式化为易读结构或压缩为单行。',base64:'支持 UTF-8 中文文本的 Base64 编码和解码。',url:'对 URL 组件进行百分号编码或解码。','text-stats':'统计字符、非空白字符、单词、行数以及 UTF-8 字节数。',case:'支持 camelCase、PascalCase、snake_case、kebab-case 和大小写转换。',color:'输入 HEX 颜色值，查看对应 RGB 和 HSL。',regex:'输入正则表达式和 flags，查看所有匹配项。',magnet:'每行输入一个 BTIH 哈希或磁力链接；已有标准磁力链接会保持不变，缺少前缀的内容会自动补全。','jav-code-extract':'从文本中提取常见 JAV 番号，支持数字及单字母后缀；可选择空格、换行、逗号、分号或自定义连接符。'})[props.id])
 async function execute(){
   error.value='';copied.value=false;busy.value=true
   try {
-    output.value=await runTool(props.id,input.value,{mode:mode.value,pattern:pattern.value,flags:flags.value})
+    const separators={space:' ',newline:'\\n','comma-en':', ','comma-zh':'，','semicolon-en':'; '}
+    const separator=separatorMode.value==='custom'?customSeparator.value:separators[separatorMode.value]
+    output.value=await runTool(props.id,input.value,{mode:mode.value,pattern:pattern.value,flags:flags.value,separator})
   } catch(e){output.value='';error.value=e.message||'处理失败，请检查输入内容'}
   finally{busy.value=false}
 }
@@ -38,7 +49,11 @@ function clear(){input.value='';output.value='';error.value=''}
     <div class="tool-intro"><div class="tool-intro-icon" :class="tool.color"><WandSparkles :size="23"/></div><div><div class="breadcrumb">工具箱 <span>/</span> {{tool.name}}</div><h1>{{tool.name}}</h1><p>{{description}}</p></div><button class="favorite-large" :class="{selected:prefs.favorites.includes(tool.id)}" @click="prefs.toggleFavorite(tool.id)"><Star :size="17" :fill="prefs.favorites.includes(tool.id)?'currentColor':'none'"/>{{prefs.favorites.includes(tool.id)?'已收藏':'收藏'}}</button></div>
     <div class="workspace">
       <div class="workspace-toolbar"><Tabs v-if="modeOptions.length" v-model="mode" :tabs="modeTabs" aria-label="处理模式"/><span v-else class="workspace-label">输入与设置</span><Button variant="ghost" size="sm" @click="clear"><RotateCcw :size="14"/> 清空</Button></div>
-      <div v-if="tool.id==='regex'" class="regex-options"><Input v-model="pattern" label="正则表达式" placeholder="例如：\d+"/><Input v-model="flags" label="Flags" placeholder="g"/></div>
+      <div v-if="tool.id==='regex'" class="regex-options"><Input v-model="pattern" label="正则表达式" placeholder="例如：\\d+"/><Input v-model="flags" label="Flags" placeholder="g"/></div>
+      <div v-if="tool.id==='jav-code-extract'" class="regex-options separator-options">
+        <Select v-model="separatorMode" label="结果连接符" :options="separatorOptions"/>
+        <Input v-if="separatorMode==='custom'" v-model="customSeparator" label="自定义连接符" placeholder="例如： | "/>
+      </div>
       <div class="editor-grid"><section class="editor-pane"><div class="pane-heading"><span>输入</span><span>{{input.length}} 字符</span></div><textarea v-model="input" :placeholder="placeholder" aria-label="待处理文本" spellcheck="false"></textarea></section><section class="editor-pane output-pane"><div class="pane-heading"><span>结果</span><Button variant="ghost" size="sm" :disabled="!output" @click="copy"><Check v-if="copied" :size="14"/><Copy v-else :size="14"/>{{copied?'已复制':'复制结果'}}</Button></div><pre v-if="output" aria-label="处理结果" aria-live="polite">{{output}}</pre><EmptyState v-else title="等待处理结果" description="处理结果将在这里显示"/></section></div>
       <div v-if="error" class="error-message">{{error}}</div>
       <div class="workspace-bottom"><span><Info :size="14"/> 所有处理均在当前浏览器本地完成</span><Button :loading="busy" :disabled="busy" @click="execute"><Play :size="15" fill="currentColor"/>{{busy?'处理中…':'立即处理'}}</Button></div>
