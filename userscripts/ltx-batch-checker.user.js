@@ -219,13 +219,14 @@
       groups.push(existsItems.slice(offset, offset + RESOURCE_BATCH_SIZE))
     }
 
+    let failedGroups = 0
     for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
       if (signal.aborted) break
       const group = groups[groupIndex]
       for (const item of group) item.resourceStatus = 'checking'
       setMessage('正在获取资源链接 ' + (groupIndex + 1) + '/' + groups.length + '，本组 ' + group.length + ' 个番号。')
       renderRows()
-      if (groupIndex > 0) await sleep(requestGapMs, signal)
+      await sleep(requestGapMs, signal)
 
       try {
         let items
@@ -275,6 +276,7 @@
         }
       } catch (error) {
         if (error?.name === 'AbortError' || signal.aborted) throw error
+        failedGroups += 1
         for (const item of group) {
           item.resourceStatus = 'error'
           item.resourceError = error?.message || '资源链接获取失败'
@@ -289,6 +291,7 @@
       }
       renderRows()
     }
+    if (failedGroups && !signal.aborted) setMessage('存在性检测已完成，但有 ' + failedGroups + ' 组资源链接获取失败；存在性结果未受影响。', 'warn')
   }
 
   function copyResourceLinks(type) {
