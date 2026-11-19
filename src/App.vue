@@ -5,6 +5,7 @@ import { Search, Command, Sun, Moon, Github, Menu, X, House, Compass, Wrench, Gl
 import { usePreferences } from './stores/preferences'
 import { tools } from './data/tools'
 import { ToastContainer, ConfirmDialog } from './components/ui'
+import { readNavigationCache } from './modules/navigation/cache'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,7 +16,7 @@ const searchInput = ref(null)
 const shortcutLabel = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
 const menuOpen = ref(false)
 const navigationWebsites = ref([])
-const searchLoading = ref(false)
+const navigationDataAvailable = ref(false)
 
 const normalizedQuery = computed(() => query.value.trim().toLocaleLowerCase())
 const toolResults = computed(() => {
@@ -76,22 +77,27 @@ const navigationGroups = [
   },
 ]
 
-async function loadSearchWebsites() {
-  searchLoading.value = true
+
+function syncSearchWebsites(data) {
+  if (!data || !Array.isArray(data.websites) || !Array.isArray(data.categories)) {
+    navigationWebsites.value = []
+    navigationDataAvailable.value = false
+    return
+  }
+  const categories = new Map(data.categories.map(category => [category.id, category.name]))
+  navigationWebsites.value = data.websites.map(website => ({
+    ...website,
+    categoryName: categories.get(website.categoryId) || '未分类',
+  }))
+  navigationDataAvailable.value = true
+}
+
+function handleNavigationStorage(event) {
+  if (event.key !== 'mot-navigation-data-cache') return
   try {
-    const url = 'https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/public/data/navigation.json'
-    const response = await fetch(url, { cache: 'no-store' })
-    if (!response.ok) throw new Error('网址数据读取失败')
-    const data = await response.json()
-    const categories = new Map((data.categories || []).map(category => [category.id, category.name]))
-    navigationWebsites.value = (data.websites || []).map(website => ({
-      ...website,
-      categoryName: categories.get(website.categoryId) || '未分类',
-    }))
+    syncSearchWebsites(event.newValue ? JSON.parse(event.newValue) : null)
   } catch {
-    // 网址导航搜索数据不可用时，在线工具搜索仍可正常使用。
-  } finally {
-    searchLoading.value = false
+    syncSearchWebsites(null)
   }
 }
 
@@ -126,23 +132,19 @@ function handleGlobalShortcut(event) {
   }
 }
 function handleNavigationDataUpdated(event) {
-  const websites = event.detail?.websites
-  if (!Array.isArray(websites)) return
-  const categories = new Map((event.detail?.categories || []).map(category => [category.id, category.name]))
-  navigationWebsites.value = websites.map(website => ({
-    ...website,
-    categoryName: categories.get(website.categoryId) || '未分类',
-  }))
+  syncSearchWebsites(event.detail)
 }
 function closeMobileNav() { menuOpen.value = false }
 
 onMounted(() => {
-  loadSearchWebsites()
+  syncSearchWebsites(readNavigationCache())
   window.addEventListener('mot-navigation-data-updated', handleNavigationDataUpdated)
+  window.addEventListener('storage', handleNavigationStorage)
   window.addEventListener('keydown', handleGlobalShortcut)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('mot-navigation-data-updated', handleNavigationDataUpdated)
+  window.removeEventListener('storage', handleNavigationStorage)
   window.removeEventListener('keydown', handleGlobalShortcut)
 })
 </script>
@@ -179,7 +181,7 @@ onBeforeUnmount(() => {
               </button>
             </template>
             <div v-if="!hasSearchResults" class="global-search-empty" role="status" aria-live="polite">
-              {{searchLoading ? '正在加载网址数据…' : '没有找到匹配的工具或网站'}}
+              {{navigationDataAvailable ? '没有找到匹配的工具或网站' : '网址数据尚未加载，请先打开网址导航'}}
             </div>
             <div v-if="toolResults.length + websiteResults.length > 0" class="global-search-footer">
               找到 {{toolResults.length + websiteResults.length}} 个结果 · 点击结果跳转
