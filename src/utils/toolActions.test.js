@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { runTool } from './toolActions'
-import { extractJavCodes } from './javCode'
 
 describe('runTool', () => {
   it('formats and minifies valid JSON', async () => {
