@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         LTX 批量番号存在性检测
-// @namespace    https://github.com/shenshou/MyOnlineTools
-// @version      1.2.0
+// @namespace    https://github.com/shenshou/MyTamperMonkeyJs
+// @version      1.2.1
 // @description  在 LTX 官方网站内批量检测番号、获取资源链接，并可精简 ed2k 文件名。
 // @match        https://ltxlib.dpdns.org/*
-// @downloadURL  https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/ltx-batch-checker.user.js
-// @updateURL    https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/ltx-batch-checker.user.js
+// @downloadURL  https://raw.githubusercontent.com/shenshou/MyTamperMonkeyJs/main/scripts/ltx-batch-checker.user.js
+// @updateURL    https://raw.githubusercontent.com/shenshou/MyTamperMonkeyJs/main/scripts/ltx-batch-checker.user.js
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==

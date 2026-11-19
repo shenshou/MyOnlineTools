@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         JavDB 评论批量搜索
-// @namespace    https://github.com/shenshou/MyOnlineTools
-// @version      1.1.0
+// @namespace    https://github.com/shenshou/MyTamperMonkeyJs
+// @version      1.1.1
 // @description  在 JavDB 当前登录会话中批量搜索番号并获取评论，支持暂停、继续与批量复制
 // @match        https://javdb.com/*
-// @downloadURL  https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/javdb-review-batch.user.js
-// @updateURL    https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/javdb-review-batch.user.js
+// @downloadURL  https://raw.githubusercontent.com/shenshou/MyTamperMonkeyJs/main/scripts/javdb-review-batch.user.js
+// @updateURL    https://raw.githubusercontent.com/shenshou/MyTamperMonkeyJs/main/scripts/javdb-review-batch.user.js
 // @grant        none
 // @run-at       document-idle
 // @noframes
@@ -13,7 +13,7 @@
 
 (() => {
   'use strict'
-  const VERSION='1.1.0', API='https://jdforrepam.com/api'
+  const VERSION='1.1.1', API='https://jdforrepam.com/api'
   const MAX_PAGES=200, MAX_RETRIES=2, AUTO_WAIT_LIMIT=120000
   const state={tasks:[],running:false,paused:false,stopped:false,controller:null,resume:null,lastAt:0,interval:8000,pageSize:20,keywords:'',sinceDate:'',message:'脚本已就绪。请求将按顺序串行执行。'}
 
