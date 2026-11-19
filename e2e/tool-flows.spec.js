@@ -164,10 +164,12 @@ test('administrator can recover a conflicted edit by exporting, reloading, and r
     updatedAt: 20,
   })
   let baselineReads = 0
+  let publicReads = 0
   let writes = 0
 
   await page.route('https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/public/data/navigation.json**', async route => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(navigationFixture) })
+    const current = publicReads++ === 0 ? navigationFixture : remoteData
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(current) })
   })
   await page.route('https://api.github.com/repos/shenshou/MyOnlineTools', async route => {
     await route.fulfill({
@@ -232,6 +234,7 @@ test('administrator can recover a conflicted edit by exporting, reloading, and r
   expect(stagedDocument.websites.some(website => website.name === 'Staged local edit')).toBe(true)
 
   await page.reload()
+  await page.getByRole('button', { name: '更新网址' }).click()
   await expect(page.getByText('Remote concurrent update')).toBeVisible()
   await page.locator('button[title="导入 JSON"]').click()
   await page.getByLabel('JSON 数据').fill(JSON.stringify(stagedDocument))
