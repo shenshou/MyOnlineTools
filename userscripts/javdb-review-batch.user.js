@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         JavDB 评论批量搜索
 // @namespace    https://github.com/shenshou/MyOnlineTools
-// @version      1.0.0
-// @description  在 JavDB 当前登录会话中批量搜索番号并获取评论，支持暂停、续跑与断点恢复
+// @version      1.1.0
+// @description  在 JavDB 当前登录会话中批量搜索番号并获取评论，支持暂停、继续与批量复制
 // @match        https://javdb.com/*
 // @downloadURL  https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/javdb-review-batch.user.js
 // @updateURL    https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/javdb-review-batch.user.js
@@ -13,9 +13,9 @@
 
 (() => {
   'use strict'
-  const VERSION='1.0.0', STORE='javdb-review-batch:v1', API='https://jdforrepam.com/api'
-  const PAGE_SIZE=20, MAX_PAGES=200, MAX_RETRIES=2, AUTO_WAIT_LIMIT=120000
-  const state={tasks:[],running:false,paused:false,stopped:false,controller:null,resume:null,lastAt:0,interval:8000,keywords:'',sinceDate:'',message:'脚本已就绪。请求将按顺序串行执行。'}
+  const VERSION='1.1.0', API='https://jdforrepam.com/api'
+  const MAX_PAGES=200, MAX_RETRIES=2, AUTO_WAIT_LIMIT=120000
+  const state={tasks:[],running:false,paused:false,stopped:false,controller:null,resume:null,lastAt:0,interval:8000,pageSize:20,keywords:'',sinceDate:'',message:'脚本已就绪。请求将按顺序串行执行。'}
 
   function add32(a,b){return(a+b)&0xffffffff}
   function cmn(q,a,b,x,s,t){a=add32(add32(a,q),add32(x,t));return add32((a<<s)|(a>>>(32-s)),b)}
@@ -103,7 +103,7 @@
   }
   async function getReviews(movieId,page,signal){
     const url=new URL(API+'/v1/movies/'+encodeURIComponent(movieId)+'/reviews')
-    url.searchParams.set('page',String(page));url.searchParams.set('sort_by','hotly');url.searchParams.set('limit',String(PAGE_SIZE))
+    url.searchParams.set('page',String(page));url.searchParams.set('sort_by','hotly');url.searchParams.set('limit',String(state.pageSize))
     let response
     try{response=await fetch(url.href,{method:'GET',headers:{jdsignature:signature()},mode:'cors',credentials:'omit',signal})}
     catch(error){throw Object.assign(new Error('Reviews API 网络请求失败；浏览器无法仅凭此错误区分 CORS 与网络中断'),{cause:error,stage:'reviews'})}
@@ -113,22 +113,6 @@
       status:response.status,retryAfterMs:retryAfter(response.headers.get('retry-after')),action:data?.action,response:data,stage:'reviews'
     })
     return{data,status:response.status}
-  }
-  function save(){
-    try{
-      const raw=JSON.stringify({version:VERSION,tasks:state.tasks,interval:state.interval,keywords:state.keywords,sinceDate:state.sinceDate})
-      if(raw.length>4000000){state.message='任务数据较大，无法完整写入会话存储；当前页面仍保留进度。';return}
-      sessionStorage.setItem(STORE,raw)
-    }catch{state.message='无法保存会话进度；当前页面仍保留内存中的任务状态。'}
-  }
-  function restore(){
-    try{
-      const saved=JSON.parse(sessionStorage.getItem(STORE)||'null')
-      if(saved?.version!==VERSION||!Array.isArray(saved.tasks))return
-      state.tasks=saved.tasks;state.interval=Number(saved.interval)||8000;state.keywords=saved.keywords||'';state.sinceDate=saved.sinceDate||''
-      for(const t of state.tasks)if(['searching','fetching','paused','retrying'].includes(t.status))t.status='queued'
-      state.message='已恢复上次会话进度；继续后会从上次成功步骤接着执行。'
-    }catch{state.message='上次保存的进度无法读取，已忽略损坏的会话数据。'}
   }
   function wait(ms){
     const until=Date.now()+Math.max(0,ms)
@@ -164,25 +148,22 @@
         task.error=errorText(error,stage)
         if(error.status===403){
           task.status='paused';state.paused=true
-          state.message=stage==='search'?task.number+' 的 JavDB 搜索遇到 403，队列已暂停。请确认页面登录状态，稍后再手动继续。':task.number+' 的 Reviews API 请求遇到 403，队列已暂停。请等待上游恢复后再手动继续。'
-          save();render();await waitResume();retries=0;continue
+          state.message=stage==='search'?task.number+' 的 JavDB 搜索遇到 403，队列已暂停。请确认页面登录状态，稍后再手动继续。':task.number+' 的 Reviews API 请求遇到 403，队列已暂停。请等待上游恢复后再手动继续。'render();await waitResume();retries=0;continue
         }
         if(error.status===429){
           rateRetries++
-          if(rateRetries>3){task.status='paused';state.paused=true;state.message=task.number+' 连续多次收到 HTTP 429，已暂停队列，避免反复请求。';save();render();await waitResume();rateRetries=0;continue}
+          if(rateRetries>3){task.status='paused';state.paused=true;state.message=task.number+' 连续多次收到 HTTP 429，已暂停队列，避免反复请求。';render();await waitResume();rateRetries=0;continue}
           const ms=Math.max(1000,error.retryAfterMs??60000)
           if(ms>AUTO_WAIT_LIMIT){
             task.status='paused';state.paused=true
-            state.message='服务器要求等待约 '+Math.ceil(ms/1000)+' 秒，超过自动等待上限，已暂停队列。'
-            save();render();await waitResume();retries=0;continue
+            state.message='服务器要求等待约 '+Math.ceil(ms/1000)+' 秒，超过自动等待上限，已暂停队列。'render();await waitResume();retries=0;continue
           }
           state.message='收到 HTTP 429，遵循 Retry-After 等待 '+Math.ceil(ms/1000)+' 秒。';render();await wait(ms);continue
         }
         const retryable=error.status==null||[408,425,500,502,503,504].includes(error.status)
         if(retryable&&retries<MAX_RETRIES){
           retries++;const ms=10000*2**(retries-1);task.status='retrying'
-          state.message=task.number+' 请求异常，等待 '+Math.ceil(ms/1000)+' 秒后重试（'+retries+'/'+MAX_RETRIES+'）。'
-          save();render();await wait(ms);continue
+          state.message=task.number+' 请求异常，等待 '+Math.ceil(ms/1000)+' 秒后重试（'+retries+'/'+MAX_RETRIES+'）。'render();await wait(ms);continue
         }
         throw error
       }
@@ -209,25 +190,24 @@
     })
   }
   async function processTask(task){
-    task.error='';task.status=task.movie?'fetching':'searching';save();render()
+    task.error='';task.status=task.movie?'fetching':'searching';render()
     if(!task.movie){
       const results=await requestPolicy(task,'search',()=>searchMovie(task.number,state.controller.signal))
       const exact=results.filter(x=>exactCode(x.title,task.number));task.candidates=exact
-      if(!exact.length){task.status='not-found';task.error='搜索结果中没有找到番号完全匹配的影片。';save();return}
-      if(exact.length>1){task.status='ambiguous';task.error='找到多个完全匹配结果，请选择影片。';save();return}
-      task.movie=exact[0];task.nextPage=Math.max(1,Number(task.nextPage)||1);save()
+      if(!exact.length){task.status='not-found';task.error='搜索结果中没有找到番号完全匹配的影片。';return}
+      if(exact.length>1){task.status='ambiguous';task.error='找到多个完全匹配结果，请选择影片。';return}
+      task.movie=exact[0];task.nextPage=Math.max(1,Number(task.nextPage)||1);
     }
     let page=Math.max(1,Number(task.nextPage)||1)
     while(page<=MAX_PAGES){
       const result=await requestPolicy(task,'reviews',()=>getReviews(task.movie.movieId,page,state.controller.signal))
       const items=reviewItems(result),previous=(task.reviews||[]).length
-      task.reviews=dedupe([...(task.reviews||[]),...items]);task.pagesFetched=page;task.nextPage=page+1
-      save();render()
-      if(!items.length||items.length<PAGE_SIZE||task.reviews.length===previous)break
+      task.reviews=dedupe([...(task.reviews||[]),...items]);task.pagesFetched=page;task.nextPage=page+1render()
+      if(!items.length||items.length<Math.min(state.pageSize,20)||task.reviews.length===previous)break
       page++
     }
     if(page>MAX_PAGES)task.warning='评论页数超过 '+MAX_PAGES+' 页，已停止继续请求。'
-    task.status='completed';task.error='';save()
+    task.status='completed';task.error='';
   }
   async function runQueue(){
     if(state.running||!state.tasks.length)return
@@ -239,12 +219,12 @@
         if(['completed','not-found'].includes(task.status))continue
         if(task.status==='ambiguous'&&!task.movie)continue
         try{await processTask(task)}
-        catch(error){if(error.name==='AbortError'||state.stopped)break;task.status='failed';task.error=errorText(error,task.movie?'reviews':'search');save()}
+        catch(error){if(error.name==='AbortError'||state.stopped)break;task.status='failed';task.error=errorText(error,task.movie?'reviews':'search');}
         render()
       }
     }finally{
       state.running=false;state.paused=false;state.controller=null
-      state.message=state.stopped?'任务已停止；已完成步骤已保留。':'队列处理结束。';save();render()
+      state.message=state.stopped?'任务已停止；已完成步骤已保留。':'队列处理结束。';render()
     }
   }
   function pause(){if(!state.running)return;state.paused=true;state.message='队列已暂停；当前请求完成后不会再发起新请求。';render()}
@@ -261,7 +241,7 @@
   function newBatch(numbers){
     if(state.running)return
     state.tasks=numbers.map((number,i)=>({id:String(i)+'-'+number,number,status:'queued',movie:null,candidates:[],reviews:[],pagesFetched:0,nextPage:1,error:'',warning:''}))
-    state.lastAt=0;save();runQueue()
+    state.lastAt=0;runQueue()
   }
   function copyAll(){
     const rows=[]
@@ -306,6 +286,7 @@ input,select{width:100%;padding:8px;border:1px solid #cfd5df;border-radius:8px;b
 <textarea id="numbers" placeholder="例如：&#10;SSIS-123&#10;PASN-027-U&#10;IPX-811"></textarea>
 <div class="settings">
 <div><label for="interval">请求间隔</label><select id="interval"><option value="5000">5 秒</option><option value="8000" selected>8 秒（默认）</option><option value="10000">10 秒</option><option value="15000">15 秒</option></select></div>
+<div><label for="pageSize">每页获取数量</label><select id="pageSize"><option value="20" selected>20 条（默认）</option><option value="40">40 条</option></select></div>
 <div><label for="keywords">评论关键词（可选）</label><input id="keywords" placeholder="多个词用逗号分隔"/></div>
 <div><label for="since">评论起始日期（可选）</label><input id="since" type="date"/></div>
 </div>
@@ -314,10 +295,10 @@ input,select{width:100%;padding:8px;border:1px solid #cfd5df;border-radius:8px;b
 </div>
 <div class="message" id="message" role="status"></div><div class="stats" id="stats"></div><div id="results"></div>
 </div>
-<footer class="foot">断点保存在当前标签页 sessionStorage；不读取、保存或导出账号密码与 Cookie。脚本不会绕过验证码或上游访问限制。</footer>
+<footer class="foot">任务进度仅保存在当前页面运行期间；刷新或关闭标签页会终止任务。不读取、保存或导出账号密码与 Cookie。脚本不会绕过验证码或上游访问限制。</footer>
 </section>`
   const $=s=>shadow.querySelector(s),launcher=$('.launcher'),panel=$('.panel'),message=$('#message'),results=$('#results')
-  const numbers=$('#numbers'),interval=$('#interval'),keywords=$('#keywords'),sinceInput=$('#since')
+  const numbers=$('#numbers'),interval=$('#interval'),pageSize=$('#pageSize'),keywords=$('#keywords'),sinceInput=$('#since')
   function label(status){return({queued:'排队中',searching:'搜索影片中',fetching:'获取评论中',retrying:'等待重试',completed:'已完成',failed:'失败','not-found':'未找到',ambiguous:'需要选择',paused:'已暂停'})[status]||status}
   function render(){
     message.textContent=state.message
@@ -357,7 +338,7 @@ input,select{width:100%;padding:8px;border:1px solid #cfd5df;border-radius:8px;b
     if(action==='start'){
       const list=parseNumbers(numbers.value)
       if(!list.length){state.message='没有识别到有效番号。';render();return}
-      state.interval=Number(interval.value)||8000;state.keywords=keywords.value;state.sinceDate=sinceInput.value;newBatch(list)
+      state.interval=Number(interval.value)||8000;state.pageSize=Number(pageSize.value)||20;state.keywords=keywords.value;state.sinceDate=sinceInput.value;newBatch(list)
     }
     if(action==='pause')pause()
     if(action==='resume')resume()
@@ -365,14 +346,13 @@ input,select{width:100%;padding:8px;border:1px solid #cfd5df;border-radius:8px;b
     if(action==='copy')copyAll()
     if(action==='choose'&&!state.running){
       const task=state.tasks[Number(button.dataset.task)],candidate=task?.candidates?.[Number(button.dataset.candidate)]
-      if(task&&candidate){task.movie=candidate;task.nextPage=1;task.status='queued';task.error='';save();runQueue()}
+      if(task&&candidate){task.movie=candidate;task.nextPage=1;task.status='queued';task.error='';runQueue()}
     }
   })
-  keywords.addEventListener('input',()=>{state.keywords=keywords.value;save();render()})
-  sinceInput.addEventListener('change',()=>{state.sinceDate=sinceInput.value;save();render()})
-  interval.addEventListener('change',()=>{state.interval=Number(interval.value)||8000;save()})
-  restore()
-  if(state.tasks.length){numbers.value=state.tasks.map(t=>t.number).join('\n');interval.value=String(state.interval);keywords.value=state.keywords;sinceInput.value=state.sinceDate;launcher.textContent='恢复评论搜索（'+state.tasks.length+' 个番号）'}
+  pageSize.addEventListener('change',()=>{state.pageSize=Number(pageSize.value)||20})
+  keywords.addEventListener('input',()=>{state.keywords=keywords.value;render()})
+  sinceInput.addEventListener('change',()=>{state.sinceDate=sinceInput.value;render()})
+  interval.addEventListener('change',()=>{state.interval=Number(interval.value)||8000;})
   render()
-  window.addEventListener('beforeunload',()=>{if(state.running){state.stopped=true;state.controller?.abort();save()}})
+  window.addEventListener('beforeunload',()=>{if(state.running){state.stopped=true;state.controller?.abort();}})
 })()
