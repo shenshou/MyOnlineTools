@@ -2,7 +2,7 @@
 // @name         LTX 批量番号存在性检测
 // @namespace    https://github.com/shenshou/MyOnlineTools
 // @version      1.1.0
-// @description  在 LTX 官方网站内批量检测番号是否存在，只输出精确匹配结果。
+// @description  在 LTX 官方网站内批量检测番号，并获取存在番号的磁链或 ed2k 资源链接。
 // @match        https://ltxlib.dpdns.org/*
 // @downloadURL  https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/ltx-batch-checker.user.js
 // @updateURL    https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/ltx-batch-checker.user.js
@@ -189,7 +189,14 @@
       sort: { field: 'score', dir: 'desc' }, randomSeed: null,
       wantCodes: codes, snapshot: catalogueSnapshot,
     }
-    let response = await requestApi('/api/items/batch', 'POST', body, signal)
+    let response
+    try {
+      response = await requestApi('/api/items/batch', 'POST', body, signal)
+    } catch (error) {
+      if (error?.reason !== 'snapshotExpired') throw error
+      const { snapshot, ...retryBody } = body
+      response = await requestApi('/api/items/batch', 'POST', retryBody, signal)
+    }
     if (response?.reason === 'snapshotExpired') {
       const { snapshot, ...retryBody } = body
       response = await requestApi('/api/items/batch', 'POST', retryBody, signal)
