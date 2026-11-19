@@ -13,7 +13,7 @@
   'use strict'
   const VERSION='1.0.0', STORE='javdb-review-batch:v1', API='https://jdforrepam.com/api'
   const PAGE_SIZE=20, MAX_PAGES=200, MAX_RETRIES=2, AUTO_WAIT_LIMIT=120000
-  const state={tasks:[],running:false,paused:false,stopped:false,controller:null,resume:null,lastAt:0,interval:8000,keywords:'',message:'脚本已就绪。请求将按顺序串行执行。'}
+  const state={tasks:[],running:false,paused:false,stopped:false,controller:null,resume:null,lastAt:0,interval:8000,keywords:'',sinceDate:'',message:'脚本已就绪。请求将按顺序串行执行。'}
 
   function add32(a,b){return(a+b)&0xffffffff}
   function cmn(q,a,b,x,s,t){a=add32(add32(a,q),add32(x,t));return add32((a<<s)|(a>>>(32-s)),b)}
@@ -114,7 +114,7 @@
   }
   function save(){
     try{
-      const raw=JSON.stringify({version:VERSION,tasks:state.tasks,interval:state.interval,keywords:state.keywords})
+      const raw=JSON.stringify({version:VERSION,tasks:state.tasks,interval:state.interval,keywords:state.keywords,sinceDate:state.sinceDate})
       if(raw.length>4000000){state.message='任务数据较大，无法完整写入会话存储；当前页面仍保留进度。';return}
       sessionStorage.setItem(STORE,raw)
     }catch{state.message='无法保存会话进度；当前页面仍保留内存中的任务状态。'}
@@ -123,7 +123,7 @@
     try{
       const saved=JSON.parse(sessionStorage.getItem(STORE)||'null')
       if(saved?.version!==VERSION||!Array.isArray(saved.tasks))return
-      state.tasks=saved.tasks;state.interval=Number(saved.interval)||8000;state.keywords=saved.keywords||''
+      state.tasks=saved.tasks;state.interval=Number(saved.interval)||8000;state.keywords=saved.keywords||'';state.sinceDate=saved.sinceDate||''
       for(const t of state.tasks)if(['searching','fetching','paused','retrying'].includes(t.status))t.status='queued'
       state.message='已恢复上次会话进度；继续后会从上次成功步骤接着执行。'
     }catch{state.message='上次保存的进度无法读取，已忽略损坏的会话数据。'}
@@ -186,10 +186,25 @@
       }
     }
   }
-  function visibleReviews(task){
-    const terms=state.keywords.split(/[\r\n,，;；]+/).map(x=>x.trim().toLocaleLowerCase()).filter(Boolean)
-    if(!terms.length)return task.reviews||[]
-    return(task.reviews||[]).filter(r=>{const text=String(r?.content||'').toLocaleLowerCase();return terms.some(term=>text.includes(term))})
+  function reviewTimestamp(review) {
+    const value = review?.created_at ?? review?.createdAt ?? review?.created
+    if (value == null || value === '') return null
+    const numeric = typeof value === 'number' || /^\d+(?:\.\d+)?$/.test(String(value))
+    const timestamp = numeric ? Number(value) * (Number(value) < 1e12 ? 1000 : 1) : Date.parse(value)
+    return Number.isFinite(timestamp) ? timestamp : null
+  }
+  function visibleReviews(task) {
+    const terms = state.keywords.split(/[\r\n,，;；]+/).map(x => x.trim().toLocaleLowerCase()).filter(Boolean)
+    const cutoff = state.sinceDate ? new Date(state.sinceDate + 'T00:00:00').getTime() : null
+    return (task.reviews || []).filter(review => {
+      const content = String(review?.content || '').toLocaleLowerCase()
+      if (terms.length && !terms.some(term => content.includes(term))) return false
+      if (cutoff != null) {
+        const timestamp = reviewTimestamp(review)
+        if (!Number.isFinite(cutoff) || timestamp == null || timestamp < cutoff) return false
+      }
+      return true
+    })
   }
   async function processTask(task){
     task.error='';task.status=task.movie?'fetching':'searching';save();render()
@@ -290,6 +305,7 @@ input,select{width:100%;padding:8px;border:1px solid #cfd5df;border-radius:8px;b
 <div class="settings">
 <div><label for="interval">请求间隔</label><select id="interval"><option value="5000">5 秒</option><option value="8000" selected>8 秒（默认）</option><option value="10000">10 秒</option><option value="15000">15 秒</option></select></div>
 <div><label for="keywords">评论关键词（可选）</label><input id="keywords" placeholder="多个词用逗号分隔"/></div>
+<div><label for="since">评论起始日期（可选）</label><input id="since" type="date"/></div>
 </div>
 <div class="actions">
 <button type="button" data-action="start">开始新批次</button><button type="button" class="secondary" data-action="pause">暂停</button><button type="button" class="secondary" data-action="resume">继续</button><button type="button" class="danger" data-action="stop">停止</button><button type="button" class="secondary" data-action="copy">复制筛选结果</button>
@@ -299,7 +315,7 @@ input,select{width:100%;padding:8px;border:1px solid #cfd5df;border-radius:8px;b
 <footer class="foot">断点保存在当前标签页 sessionStorage；不读取、保存或导出账号密码与 Cookie。脚本不会绕过验证码或上游访问限制。</footer>
 </section>`
   const $=s=>shadow.querySelector(s),launcher=$('.launcher'),panel=$('.panel'),message=$('#message'),results=$('#results')
-  const numbers=$('#numbers'),interval=$('#interval'),keywords=$('#keywords')
+  const numbers=$('#numbers'),interval=$('#interval'),keywords=$('#keywords'),sinceInput=$('#since')
   function label(status){return({queued:'排队中',searching:'搜索影片中',fetching:'获取评论中',retrying:'等待重试',completed:'已完成',failed:'失败','not-found':'未找到',ambiguous:'需要选择',paused:'已暂停'})[status]||status}
   function render(){
     message.textContent=state.message
@@ -339,7 +355,7 @@ input,select{width:100%;padding:8px;border:1px solid #cfd5df;border-radius:8px;b
     if(action==='start'){
       const list=parseNumbers(numbers.value)
       if(!list.length){state.message='没有识别到有效番号。';render();return}
-      state.interval=Number(interval.value)||8000;state.keywords=keywords.value;newBatch(list)
+      state.interval=Number(interval.value)||8000;state.keywords=keywords.value;state.sinceDate=sinceInput.value;newBatch(list)
     }
     if(action==='pause')pause()
     if(action==='resume')resume()
@@ -351,9 +367,10 @@ input,select{width:100%;padding:8px;border:1px solid #cfd5df;border-radius:8px;b
     }
   })
   keywords.addEventListener('input',()=>{state.keywords=keywords.value;save();render()})
+  sinceInput.addEventListener('change',()=>{state.sinceDate=sinceInput.value;save();render()})
   interval.addEventListener('change',()=>{state.interval=Number(interval.value)||8000;save()})
   restore()
-  if(state.tasks.length){numbers.value=state.tasks.map(t=>t.number).join('\n');interval.value=String(state.interval);keywords.value=state.keywords;launcher.textContent='恢复评论搜索（'+state.tasks.length+' 个番号）'}
+  if(state.tasks.length){numbers.value=state.tasks.map(t=>t.number).join('\n');interval.value=String(state.interval);keywords.value=state.keywords;sinceInput.value=state.sinceDate;launcher.textContent='恢复评论搜索（'+state.tasks.length+' 个番号）'}
   render()
   window.addEventListener('beforeunload',()=>{if(state.running){state.stopped=true;state.controller?.abort();save()}})
 })()
