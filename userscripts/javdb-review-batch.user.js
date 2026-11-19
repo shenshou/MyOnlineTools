@@ -153,20 +153,22 @@
     return label+'失败：'+(error.message||'未知网络错误')
   }
   async function requestPolicy(task,stage,request){
-    let retries=0
+    let retries=0,rateRetries=0
     while(true){
       await beforeRequest()
-      try{return await request()}
+      try{const result=await request();rateRetries=0;return result}
       catch(error){
         if(error.name==='AbortError'||state.stopped)throw error
         task.error=errorText(error,stage)
         if(error.status===403){
           task.status='paused';state.paused=true
-          state.message=task.number+' 遇到 403，队列已暂停。请确认 JavDB 登录状态并稍后手动继续。'
+          state.message=stage==='search'?task.number+' 的 JavDB 搜索遇到 403，队列已暂停。请确认页面登录状态，稍后再手动继续。':task.number+' 的 Reviews API 请求遇到 403，队列已暂停。请等待上游恢复后再手动继续。'
           save();render();await waitResume();retries=0;continue
         }
         if(error.status===429){
-          const ms=error.retryAfterMs??60000
+          rateRetries++
+          if(rateRetries>3){task.status='paused';state.paused=true;state.message=task.number+' 连续多次收到 HTTP 429，已暂停队列，避免反复请求。';save();render();await waitResume();rateRetries=0;continue}
+          const ms=Math.max(1000,error.retryAfterMs??60000)
           if(ms>AUTO_WAIT_LIMIT){
             task.status='paused';state.paused=true
             state.message='服务器要求等待约 '+Math.ceil(ms/1000)+' 秒，超过自动等待上限，已暂停队列。'
