@@ -34,7 +34,7 @@ const description=computed(()=>({json:'校验 JSON，并将其格式化为易读
 async function execute(){
   error.value='';copied.value=false;busy.value=true
   try {
-    const separators={space:' ',newline:'\\n','comma-en':', ','comma-zh':'，','semicolon-en':'; '}
+    const separators={space:' ',newline:'\n','comma-en':', ','comma-zh':'，','semicolon-en':'; '}
     const separator=separatorMode.value==='custom'?customSeparator.value:separators[separatorMode.value]
     output.value=await runTool(props.id,input.value,{mode:mode.value,pattern:pattern.value,flags:flags.value,separator})
   } catch(e){output.value='';error.value=e.message||'处理失败，请检查输入内容'}
@@ -49,7 +49,7 @@ function clear(){input.value='';output.value='';error.value=''}
     <div class="tool-intro"><div class="tool-intro-icon" :class="tool.color"><WandSparkles :size="23"/></div><div><div class="breadcrumb">工具箱 <span>/</span> {{tool.name}}</div><h1>{{tool.name}}</h1><p>{{description}}</p></div><button class="favorite-large" :class="{selected:prefs.favorites.includes(tool.id)}" @click="prefs.toggleFavorite(tool.id)"><Star :size="17" :fill="prefs.favorites.includes(tool.id)?'currentColor':'none'"/>{{prefs.favorites.includes(tool.id)?'已收藏':'收藏'}}</button></div>
     <div class="workspace">
       <div class="workspace-toolbar"><Tabs v-if="modeOptions.length" v-model="mode" :tabs="modeTabs" aria-label="处理模式"/><span v-else class="workspace-label">输入与设置</span><Button variant="ghost" size="sm" @click="clear"><RotateCcw :size="14"/> 清空</Button></div>
-      <div v-if="tool.id==='regex'" class="regex-options"><Input v-model="pattern" label="正则表达式" placeholder="例如：\\d+"/><Input v-model="flags" label="Flags" placeholder="g"/></div>
+      <div v-if="tool.id==='regex'" class="regex-options"><Input v-model="pattern" label="正则表达式" placeholder="例如：\d+"/><Input v-model="flags" label="Flags" placeholder="g"/></div>
       <div v-if="tool.id==='jav-code-extract'" class="regex-options separator-options">
         <Select v-model="separatorMode" label="结果连接符" :options="separatorOptions"/>
         <Input v-if="separatorMode==='custom'" v-model="customSeparator" label="自定义连接符" placeholder="例如： | "/>
