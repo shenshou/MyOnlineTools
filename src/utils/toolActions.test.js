@@ -46,9 +46,23 @@ describe('runTool', () => {
     await expect(runTool('color', 'not-a-color')).rejects.toThrow('请输入 3 位或 6 位 HEX')
   })
 
-  it('extracts JAV codes, normalizes letter case, and separates results with spaces', async () => {
+  it('extracts common JAV codes and defaults to spaces', async () => {
     const input = '片名：ssis-123，另外有 ABP_456 和 FC2-PPV-1234567；1pondo-123456。'
     expect(await runTool('jav-code-extract', input)).toBe('SSIS-123 ABP-456 FC2-PPV-1234567 1PONDO-123456')
+  })
+
+  it('extracts letter suffixes and numeric suffixes without partial matches', async () => {
+    const input = 'PASN-027-U ABC-123A ABC-123-4 IPX-811'
+    expect(await runTool('jav-code-extract', input)).toBe('PASN-027-U ABC-123A ABC-123-4 IPX-811')
+    expect(await runTool('jav-code-extract', 'PASN-027-U2')).toBe('')
+    expect(await runTool('jav-code-extract', 'ABC-123-AB')).toBe('')
+  })
+
+  it('supports selectable output separators without changing extraction order', async () => {
+    const input = 'PASN-027-U, SSIS-123 and ABP-456'
+    expect(await runTool('jav-code-extract', input, { separator: '\n' })).toBe('PASN-027-U\nSSIS-123\nABP-456')
+    expect(await runTool('jav-code-extract', input, { separator: '，' })).toBe('PASN-027-U，SSIS-123，ABP-456')
+    expect(await runTool('jav-code-extract', input, { separator: ' | ' })).toBe('PASN-027-U | SSIS-123 | ABP-456')
   })
 
   it('returns an empty string when no JAV codes are found', async () => {

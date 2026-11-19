@@ -12,5 +12,5 @@ export const tools = [
   { id:'color', name:'颜色转换', desc:'HEX、RGB、HSL 颜色格式互转', category:'convert', icon:'Palette', color:'pink', tags:['HEX','RGB','颜色'] },
   { id:'regex', name:'正则表达式测试', desc:'实时匹配文本并查看匹配结果', category:'developer', icon:'Regex', color:'orange', tags:['Regex','匹配'] },
   { id:'magnet', name:'磁力链接补全', desc:'批量为缺少前缀的 BTIH 哈希补全磁力链接前缀', category:'convert', icon:'Magnet', color:'blue', tags:['磁力链接','Magnet','BTIH','批量'] },
-  { id:'jav-code-extract', name:'番号提取', desc:'从混合文本中提取番号，自动转为大写并以空格分隔', category:'text', icon:'Regex', color:'green', tags:['番号','JAV','提取','批量'] },
+  { id:'jav-code-extract', name:'番号提取', desc:'从混合文本中提取番号，支持数字及单字母后缀，并可自定义连接符', category:'text', icon:'Regex', color:'green', tags:['番号','JAV','提取','批量'] },
 ]
