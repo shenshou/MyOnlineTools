@@ -11,14 +11,14 @@ export async function runTool(id, input, options = {}) {
     case 'url':
       return options.mode === 'decode' ? decodeURIComponent(value) : encodeURIComponent(value)
     case 'text-stats': {
-      const lines = value ? value.split(/\r?\n/).length : 0
+      const lines = value ? value.split(/\\r?\\n/).length : 0
       const chars = [...value].length
-      const noSpace = [...value.replace(/\s/g, '')].length
-      const words = (value.match(/[\p{L}\p{N}_]+/gu) || []).length
-      return `字符数：${chars}\n不含空白：${noSpace}\n单词数：${words}\n行数：${lines}\n字节数（UTF-8）：${new TextEncoder().encode(value).length}`
+      const noSpace = [...value.replace(/\\s/g, '')].length
+      const words = (value.match(/[\\p{L}\\p{N}_]+/gu) || []).length
+      return `字符数：${chars}\\n不含空白：${noSpace}\\n单词数：${words}\\n行数：${lines}\\n字节数（UTF-8）：${new TextEncoder().encode(value).length}`
     }
     case 'case': {
-      const words = value.replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+      const words = value.replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[^\\p{L}\\p{N}]+/u).filter(Boolean)
       const lower = words.map(word => word.toLowerCase())
       const mode = options.mode || 'camel'
       if (mode === 'upper') return value.toUpperCase()
@@ -30,7 +30,7 @@ export async function runTool(id, input, options = {}) {
     }
     case 'color': {
       const hex = value.trim().replace('#', '')
-      if (!/^(?:[\da-f]{3}|[\da-f]{6})$/i.test(hex)) throw new Error('请输入 3 位或 6 位 HEX 颜色值，例如 #6366f1')
+      if (!/^(?:[\\da-f]{3}|[\\da-f]{6})$/i.test(hex)) throw new Error('请输入 3 位或 6 位 HEX 颜色值，例如 #6366f1')
       const full = hex.length === 3 ? [...hex].map(char => char + char).join('') : hex
       const r = parseInt(full.slice(0, 2), 16), g = parseInt(full.slice(2, 4), 16), b = parseInt(full.slice(4, 6), 16)
       const [rr, gg, bb] = [r, g, b].map(channel => channel / 255)
@@ -42,15 +42,15 @@ export async function runTool(id, input, options = {}) {
         else if (max === gg) h = 60 * ((bb - rr) / delta + 2)
         else h = 60 * ((rr - gg) / delta + 4)
       }
-      return `HEX：#${full.toUpperCase()}\nRGB：rgb(${r}, ${g}, ${b})\nHSL：hsl(${Math.round((h + 360) % 360)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`
+      return `HEX：#${full.toUpperCase()}\\nRGB：rgb(${r}, ${g}, ${b})\\nHSL：hsl(${Math.round((h + 360) % 360)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`
     }
     case 'jav-code-extract':
-      return extractJavCodes(value)
+      return extractJavCodes(value, options.separator ?? ' ')
     case 'magnet': {
       const prefix = 'magnet:?xt=urn:btih:'
-      return value.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
-        .map(line => /^magnet:\?xt=urn:btih:/i.test(line) ? line : prefix + line)
-        .join('\n')
+      return value.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean)
+        .map(line => /^magnet:\\?xt=urn:btih:/i.test(line) ? line : prefix + line)
+        .join('\\n')
     }
     case 'regex': {
       const pattern = options.pattern ?? ''
