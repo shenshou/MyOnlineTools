@@ -43,9 +43,33 @@
 
 
 /* Shared component integration and consistent keyboard focus */
-:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+/* Keep a visible focus ring for controls that do not contain editable text. */
+:where(button, a, [tabindex]):not(input):not(textarea):not(select):focus-visible {
   outline: 0;
   box-shadow: var(--focus-ring);
+}
+
+/* Editable fields use a restrained border cue instead of the large purple ring. */
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select):focus-visible {
+  outline: 0;
+  box-shadow: none;
+  border-color: var(--focus-border);
+}
+
+/* Preserve a clear keyboard indicator for native selection controls. */
+:where(input[type="checkbox"], input[type="radio"], input[type="range"]):focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+
+/* Borderless search inputs indicate focus on their surrounding search surface. */
+.hero-search:focus-within {
+  outline: 2px solid var(--focus-border);
+  outline-offset: 3px;
+}
+
+.header-search:focus-within {
+  border-color: var(--focus-border);
 }
 button:disabled { cursor: not-allowed; }
 .nav-btn.btn {
@@ -130,7 +154,11 @@ button:disabled { cursor: not-allowed; }
 .nav-form .field input:focus,
 .nav-form-row .field input:focus,
 .nav-field-label input:focus {
-  border-color: var(--primary);
+  border-color: var(--focus-border);
+}
+
+.regex-options input:focus {
+  border-color: var(--focus-border);
 }
 .nav-add-category > .field { flex: 1; min-width: 0; }
 .nav-category-edit > .field { flex: 0 0 90px; width: 90px; }
