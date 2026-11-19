@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         LTX 批量番号存在性检测
 // @namespace    https://github.com/shenshou/MyOnlineTools
-// @version      1.0.0
-// @description  在 LTX 官方网站内批量检测番号是否存在，只输出精确匹配结果。
+// @version      1.2.0
+// @description  在 LTX 官方网站内批量检测番号、获取资源链接，并可精简 ed2k 文件名。
 // @match        https://ltxlib.dpdns.org/*
 // @downloadURL  https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/ltx-batch-checker.user.js
 // @updateURL    https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/ltx-batch-checker.user.js
@@ -15,6 +15,7 @@
   const RESPONSE_CONTENT_TYPE = 'application/vnd.ltx.encrypted+json'
   const RESPONSE_CONTEXT = 'ltx-api-response-v1'
   const MAX_BATCH_SIZE = 300
+  const RESOURCE_BATCH_SIZE = 60
   const PAGE_SIZE = 60
   const REQUEST_INTERVALS = [1000, 3000, 5000, 8000, 10000, 15000]
   let requestGapMs = 1000
@@ -160,6 +161,7 @@
           if (expectedTotal === null) {
             expectedTotal = page.total
             expectedSnapshot = page.snapshot
+            catalogueSnapshot = page.snapshot
           } else if (page.total !== expectedTotal || page.snapshot !== expectedSnapshot) {
             throw new Error('LTX 搜索期间资源库版本发生变化，不能判定为不存在')
           }
@@ -179,6 +181,145 @@
       }
     }
     throw new Error('LTX 资源库版本过期，重试后仍无法完成检测')
+  }
+
+  async function fetchResourceBatch(codes, signal) {
+    const body = {
+      q: '', actor: null, status: 'all', genres: [], maker: null, type: null, sub: false,
+      sort: { field: 'score', dir: 'desc' }, randomSeed: null,
+      wantCodes: codes, snapshot: catalogueSnapshot,
+    }
+    let response
+    try {
+      response = await requestApi('/api/items/batch', 'POST', body, signal)
+    } catch (error) {
+      if (error?.reason !== 'snapshotExpired') throw error
+      const { snapshot, ...retryBody } = body
+      response = await requestApi('/api/items/batch', 'POST', retryBody, signal)
+    }
+    if (response?.reason === 'snapshotExpired') {
+      const { snapshot, ...retryBody } = body
+      response = await requestApi('/api/items/batch', 'POST', retryBody, signal)
+    }
+    if (typeof response?.snapshot === 'string' && response.snapshot) catalogueSnapshot = response.snapshot
+    if (!Array.isArray(response?.items)) throw new Error('LTX 批量资源响应缺少 items 数组')
+    return response.items
+  }
+
+  function getResourceType(link) {
+    if (typeof link !== 'string') return ''
+    if (/^ed2k:\/\//i.test(link)) return 'ed2k'
+    if (/^magnet:\?/i.test(link)) return 'magnet'
+    return ''
+  }
+
+  async function fetchResourceLinks(existsItems, signal) {
+    const groups = []
+    for (let offset = 0; offset < existsItems.length; offset += RESOURCE_BATCH_SIZE) {
+      groups.push(existsItems.slice(offset, offset + RESOURCE_BATCH_SIZE))
+    }
+
+    let failedGroups = 0
+    for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
+      if (signal.aborted) break
+      const group = groups[groupIndex]
+      for (const item of group) item.resourceStatus = 'checking'
+      setMessage('正在获取资源链接 ' + (groupIndex + 1) + '/' + groups.length + '，本组 ' + group.length + ' 个番号。')
+      renderRows()
+      await sleep(requestGapMs, signal)
+
+      try {
+        let items
+        let attempt = 0
+        while (true) {
+          try {
+            items = await fetchResourceBatch(group.map(item => item.code), signal)
+            break
+          } catch (error) {
+            if (error?.name === 'AbortError' || signal.aborted) throw error
+            if (error?.status === 429 && attempt === 0) {
+              const delay = retryDelay(error)
+              if (delay === null || delay > 15 * 60 * 1000) throw error
+              setMessage('资源链接接口返回 HTTP 429，遵循 Retry-After，' + Math.ceil(delay / 1000) + ' 秒后重试。', 'warn')
+              await sleep(delay, signal)
+              attempt += 1
+              continue
+            }
+            if (!error?.status && attempt === 0) {
+              await sleep(1500, signal)
+              attempt += 1
+              continue
+            }
+            throw error
+          }
+        }
+
+        const byCode = new Map()
+        for (const item of items) {
+          const code = normalizeCode(item?.code)
+          if (code && typeof item?.link === 'string') byCode.set(code, item.link)
+        }
+        for (const item of group) {
+          const link = byCode.get(item.code) || ''
+          const type = getResourceType(link)
+          if (type) {
+            item.resourceLink = link
+            item.resourceType = type
+            item.resourceStatus = 'available'
+            item.resourceError = ''
+          } else {
+            item.resourceLink = ''
+            item.resourceType = ''
+            item.resourceStatus = link ? 'error' : 'missing'
+            item.resourceError = link ? '上游返回了不支持的链接格式' : ''
+          }
+        }
+      } catch (error) {
+        if (error?.name === 'AbortError' || signal.aborted) throw error
+        failedGroups += 1
+        for (const item of group) {
+          item.resourceStatus = 'error'
+          item.resourceError = error?.message || '资源链接获取失败'
+        }
+        if (error?.status === 403 || error?.status === 429) {
+          for (const remaining of groups.slice(groupIndex + 1).flat()) {
+            remaining.resourceStatus = 'error'
+            remaining.resourceError = '上游限制了资源链接请求，未继续查询'
+          }
+          break
+        }
+      }
+      renderRows()
+    }
+    if (failedGroups && !signal.aborted) setMessage('存在性检测已完成，但有 ' + failedGroups + ' 组资源链接获取失败；存在性结果未受影响。', 'warn')
+  }
+
+  const COMPACT_ED2K_KEY = 'ltx-batch-checker-compact-ed2k'
+  let compactEd2k = false
+  try { compactEd2k = localStorage.getItem(COMPACT_ED2K_KEY) === 'true' } catch {}
+
+  function getCopyResourceLink(item) {
+    const link = item?.resourceLink
+    if (!compactEd2k || item?.resourceType !== 'ed2k' || typeof link !== 'string') return link || ''
+    const match = link.match(/^(ed2k:\/\/\|file\|)([^|]+)(\|[^|]*\|[^|]*\|\/)$/i)
+    if (!match) return link
+    const extensionMatch = match[2].match(/(\.[A-Za-z0-9]{1,10})$/)
+    const code = normalizeCode(item.code)
+    if (!extensionMatch || !/^[A-Z0-9][A-Z0-9-]{0,63}$/.test(code)) return link
+    return match[1] + code + '.restoredLTX' + extensionMatch[1] + match[3]
+  }
+
+  function copyResourceLinks(type) {
+    const links = results
+      .filter(item => item.status === 'exists' && item.resourceStatus === 'available' && (!type || item.resourceType === type))
+      .map(getCopyResourceLink)
+    if (!links.length) {
+      setMessage(type === 'magnet' ? '没有可复制的磁力链接。' : type === 'ed2k' ? '没有可复制的 ed2k 链接。' : '没有可复制的资源链接。', 'warn')
+      return
+    }
+    navigator.clipboard.writeText(links.join('\n')).then(() => {
+      setMessage('已复制 ' + links.length + ' 条' + (type || '') + '资源链接。')
+    }).catch(() => setMessage('复制失败，请检查浏览器剪贴板权限。', 'warn'))
   }
 
   function parseInput(value) {
@@ -225,7 +366,7 @@
     '.hint{margin:0 0 8px;color:#475569;font-size:11px}textarea{display:block;width:100%;min-height:112px;resize:vertical;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;font:12px/1.5 ui-monospace,monospace;outline:none}' +
     'textarea:focus{border-color:#2563eb;box-shadow:0 0 0 2px #2563eb22}.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}' +
     '.actions button{border:1px solid #cbd5e1;border-radius:7px;padding:7px 10px;background:#fff;color:#0f172a;font-size:11px}.actions .primary{border-color:#2563eb;background:#2563eb;color:#fff}' +
-    '.actions button:disabled{opacity:.45;cursor:not-allowed}.interval-label{display:inline-block;margin:10px 7px 0 0;color:#475569;font-size:11px}.interval{margin-top:10px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#0f172a;font:11px system-ui}.summary{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 8px;color:#475569;font-size:11px}.summary b{color:#0f172a}' +
+    '.actions button:disabled{opacity:.45;cursor:not-allowed}.row-copy{border:1px solid #cbd5e1;border-radius:6px;padding:4px 7px;background:#eff6ff;color:#1d4ed8;font-size:10px;cursor:pointer}.interval-label{display:inline-block;margin:10px 7px 0 0;color:#475569;font-size:11px}.interval{margin-top:10px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#0f172a;font:11px system-ui}.compact-option{display:flex;align-items:center;gap:6px;margin-top:10px;color:#475569;font-size:11px;cursor:pointer}.compact-option input{margin:0}.summary{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 8px;color:#475569;font-size:11px}.summary b{color:#0f172a}' +
     '.progress{height:5px;overflow:hidden;border-radius:9px;background:#e2e8f0}.bar{height:100%;width:0;background:#2563eb;transition:width .15s}' +
     '.message{margin:8px 0;color:#475569;font-size:11px;overflow-wrap:anywhere}.message.warn{color:#b45309}.message.error{color:#b91c1c}' +
     '.results{max-height:260px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px}table{width:100%;border-collapse:collapse;font-size:11px}' +
@@ -243,11 +384,12 @@
     '<div class="body"><p class="hint">每行一个番号，也支持空格、逗号或分号分隔；单次最多 300 个，按顺序逐个查询。</p>' +
     '<textarea class="input" placeholder="IPX-811&#10;SSIS-123&#10;ABW-208"></textarea>' +
     '<div class="actions"><button type="button" class="primary start">开始检测</button><button type="button" class="cancel" disabled>停止</button>' +
-    '<button type="button" class="copy" disabled>复制结果</button><button type="button" class="clear">清空</button></div>' +
+    '<button type="button" class="copy" disabled>复制结果</button><button type="button" class="copy-magnets" disabled>复制全部磁链</button><button type="button" class="copy-ed2k" disabled>复制全部 ed2k</button><button type="button" class="copy-links" disabled>复制全部资源</button><button type="button" class="clear">清空</button></div>' +
     '<label class="interval-label" for="ltx-request-interval">请求间隔</label><select class="interval" id="ltx-request-interval" aria-label="请求间隔"><option value="1000" selected>1 秒（默认）</option><option value="3000">3 秒</option><option value="5000">5 秒</option><option value="8000">8 秒</option><option value="10000">10 秒</option><option value="15000">15 秒</option></select>' +
-    '<div class="summary"><span>总数 <b class="total">0</b></span><span>存在 <b class="yes">0</b></span><span>不存在 <b class="no">0</b></span><span>失败 <b class="failed">0</b></span></div>' +
+    '<label class="compact-option"><input class="compact-ed2k" type="checkbox"> 精简 ed2k 文件名（番号.restoredLTX+扩展名）</label>' +
+    '<div class="summary"><span>总数 <b class="total">0</b></span><span>存在 <b class="yes">0</b></span><span>不存在 <b class="no">0</b></span><span>失败 <b class="failed">0</b></span><span>资源 <b class="resources">0</b></span></div>' +
     '<div class="progress"><div class="bar"></div></div><p class="message" role="status">等待输入番号。</p>' +
-    '<div class="results"><table><thead><tr><th>番号</th><th>结果</th></tr></thead><tbody></tbody></table></div>' +
+    '<div class="results"><table><thead><tr><th>番号</th><th>检测结果</th><th>资源链接</th></tr></thead><tbody></tbody></table></div>' +
     '<p class="foot">检测请求直接发送至 LTX 官方站点。遇到 403 会停止后续任务；遇到 429 会遵循 Retry-After，不会把失败当作不存在。</p></div>'
   shadow.append(launcher, panel)
 
@@ -265,6 +407,13 @@
     const yes = results.filter(item => item.status === 'exists').length
     const no = results.filter(item => item.status === 'missing').length
     const failed = results.filter(item => item.status === 'error').length
+    const resources = results.filter(item => item.resourceStatus === 'available').length
+    const magnets = results.filter(item => item.resourceStatus === 'available' && item.resourceType === 'magnet').length
+    const ed2k = results.filter(item => item.resourceStatus === 'available' && item.resourceType === 'ed2k').length
+    $('.resources').textContent = String(resources)
+    $('.copy-magnets').disabled = magnets === 0
+    $('.copy-ed2k').disabled = ed2k === 0
+    $('.copy-links').disabled = resources === 0
     $('.total').textContent = String(total)
     $('.yes').textContent = String(yes)
     $('.no').textContent = String(no)
@@ -279,12 +428,26 @@
       const row = document.createElement('tr')
       const codeCell = document.createElement('td')
       const statusCell = document.createElement('td')
+      const resourceCell = document.createElement('td')
       codeCell.textContent = item.code
       statusCell.textContent = statusLabel(item.status) + (item.error ? '：' + item.error : '')
+      if (item.status === 'exists') {
+        if (item.resourceStatus === 'available') {
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.className = 'row-copy'
+          button.dataset.index = String(results.indexOf(item))
+          button.textContent = '复制 ' + item.resourceType
+          resourceCell.append(button)
+        } else if (item.resourceStatus === 'missing') resourceCell.textContent = '未找到链接'
+        else if (item.resourceStatus === 'error') resourceCell.textContent = '获取失败' + (item.resourceError ? '：' + item.resourceError : '')
+        else if (item.resourceStatus === 'checking') resourceCell.textContent = '获取中…'
+        else resourceCell.textContent = '待获取'
+      } else resourceCell.textContent = '—'
       if (item.status === 'exists') statusCell.className = 'exists'
       if (item.status === 'missing') statusCell.className = 'missing'
       if (item.status === 'error') statusCell.className = 'error-status'
-      row.append(codeCell, statusCell)
+      row.append(codeCell, statusCell, resourceCell)
       tbody.append(row)
     }
     renderSummary()
@@ -308,10 +471,11 @@
     }
     activeController = new AbortController()
     const signal = activeController.signal
-    results = codes.map(code => ({ code, status: 'queued', error: '' }))
+    results = codes.map(code => ({ code, status: 'queued', error: '', resourceStatus: 'not-applicable', resourceLink: '', resourceType: '', resourceError: '' }))
     renderRows()
     setRunning(true)
     setMessage('已载入 ' + codes.length + ' 个番号，开始按顺序检测。')
+    let stopResourceFetch = false
     try {
       for (let index = 0; index < results.length; index += 1) {
         if (signal.aborted) break
@@ -342,11 +506,13 @@
           item.status = 'error'
           item.error = error?.message || '未知错误'
           if (error?.status === 403) {
+            stopResourceFetch = true
             setMessage('上游返回 HTTP 403，已停止剩余任务；请检查 LTX 页面登录状态或站点策略。', 'error')
             for (const pending of results.slice(index + 1)) pending.status = 'stopped'
             break
           }
           if (error?.status === 429) {
+            stopResourceFetch = true
             setMessage('上游持续返回 HTTP 429，已停止剩余任务；请等待一段时间后再试。', 'warn')
             for (const pending of results.slice(index + 1)) pending.status = 'stopped'
             break
@@ -355,11 +521,16 @@
         renderRows()
         if (index < results.length - 1 && !signal.aborted) await sleep(requestGapMs, signal)
       }
+      const confirmed = results.filter(item => item.status === 'exists')
+      if (!signal.aborted && !stopResourceFetch && confirmed.length) await fetchResourceLinks(confirmed, signal)
     } catch (error) {
       if (error?.name !== 'AbortError') setMessage(error?.message || '批量检测中断。', 'error')
     } finally {
       const stopped = signal.aborted
-      if (stopped) for (const item of results) if (item.status === 'queued' || item.status === 'checking') item.status = 'stopped'
+      if (stopped) for (const item of results) {
+        if (item.status === 'queued' || item.status === 'checking') item.status = 'stopped'
+        if (item.resourceStatus === 'checking') { item.resourceStatus = 'error'; item.resourceError = '已停止获取' }
+      }
       activeController = null
       setRunning(false)
       renderRows()
@@ -368,6 +539,12 @@
     }
   }
 
+  const compactEd2kToggle = $('.compact-ed2k')
+  compactEd2kToggle.checked = compactEd2k
+  compactEd2kToggle.addEventListener('change', event => {
+    compactEd2k = event.target.checked
+    try { localStorage.setItem(COMPACT_ED2K_KEY, String(compactEd2k)) } catch {}
+  })
   $('.interval').addEventListener('change', event => {
     const selected = Number(event.target.value)
     if (REQUEST_INTERVALS.includes(selected)) requestGapMs = selected
@@ -382,6 +559,17 @@
     results = []
     renderRows()
     setMessage('已清空。')
+  })
+  $('.copy-magnets').addEventListener('click', () => copyResourceLinks('magnet'))
+  $('.copy-ed2k').addEventListener('click', () => copyResourceLinks('ed2k'))
+  $('.copy-links').addEventListener('click', () => copyResourceLinks(''))
+  tbody.addEventListener('click', event => {
+    const button = event.target.closest('button.row-copy')
+    if (!button) return
+    const item = results[Number(button.dataset.index)]
+    if (!item?.resourceLink) return
+    navigator.clipboard.writeText(getCopyResourceLink(item)).then(() => setMessage(item.code + ' 的 ' + item.resourceType + ' 链接已复制。'))
+      .catch(() => setMessage('复制失败，请检查浏览器剪贴板权限。', 'warn'))
   })
   copyButton.addEventListener('click', async () => {
     try {
