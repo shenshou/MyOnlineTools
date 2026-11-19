@@ -148,7 +148,7 @@
         task.error=errorText(error,stage)
         if(error.status===403){
           task.status='paused';state.paused=true
-          state.message=stage==='search'?task.number+' 的 JavDB 搜索遇到 403，队列已暂停。请确认页面登录状态，稍后再手动继续。':task.number+' 的 Reviews API 请求遇到 403，队列已暂停。请等待上游恢复后再手动继续。'render();await waitResume();retries=0;continue
+          state.message=stage==='search'?task.number+' 的 JavDB 搜索遇到 403，队列已暂停。请确认页面登录状态，稍后再手动继续。':task.number+' 的 Reviews API 请求遇到 403，队列已暂停。请等待上游恢复后再手动继续。';render();await waitResume();retries=0;continue
         }
         if(error.status===429){
           rateRetries++
@@ -156,14 +156,14 @@
           const ms=Math.max(1000,error.retryAfterMs??60000)
           if(ms>AUTO_WAIT_LIMIT){
             task.status='paused';state.paused=true
-            state.message='服务器要求等待约 '+Math.ceil(ms/1000)+' 秒，超过自动等待上限，已暂停队列。'render();await waitResume();retries=0;continue
+            state.message='服务器要求等待约 '+Math.ceil(ms/1000)+' 秒，超过自动等待上限，已暂停队列。';render();await waitResume();retries=0;continue
           }
           state.message='收到 HTTP 429，遵循 Retry-After 等待 '+Math.ceil(ms/1000)+' 秒。';render();await wait(ms);continue
         }
         const retryable=error.status==null||[408,425,500,502,503,504].includes(error.status)
         if(retryable&&retries<MAX_RETRIES){
           retries++;const ms=10000*2**(retries-1);task.status='retrying'
-          state.message=task.number+' 请求异常，等待 '+Math.ceil(ms/1000)+' 秒后重试（'+retries+'/'+MAX_RETRIES+'）。'render();await wait(ms);continue
+          state.message=task.number+' 请求异常，等待 '+Math.ceil(ms/1000)+' 秒后重试（'+retries+'/'+MAX_RETRIES+'）。';render();await wait(ms);continue
         }
         throw error
       }
@@ -202,7 +202,7 @@
     while(page<=MAX_PAGES){
       const result=await requestPolicy(task,'reviews',()=>getReviews(task.movie.movieId,page,state.controller.signal))
       const items=reviewItems(result),previous=(task.reviews||[]).length
-      task.reviews=dedupe([...(task.reviews||[]),...items]);task.pagesFetched=page;task.nextPage=page+1render()
+      task.reviews=dedupe([...(task.reviews||[]),...items]);task.pagesFetched=page;task.nextPage=page+1;render()
       if(!items.length||items.length<Math.min(state.pageSize,20)||task.reviews.length===previous)break
       page++
     }
