@@ -16,6 +16,11 @@ const sinceDate = ref('')
 const dateInput = ref(null)
 const expandedTaskIds = ref(new Set())
 const requestInterval = ref('5000')
+const pageSize = ref('20')
+const pageSizeOptions = [
+  { value: '20', label: '20 条（默认）' },
+  { value: '40', label: '40 条' },
+]
 const tasks = ref([])
 const isRunning = ref(false)
 const isPaused = ref(false)
@@ -135,7 +140,7 @@ async function requestWithRetry(task, stage, request, { pauseQueueOnExhausted = 
 
 async function fetchAllReviews(task, movie, options = {}) {
   const collected = []
-  const limit = 20
+  const limit = Number(pageSize.value) || 20
   let page = 1
 
   while (page <= 200) {
@@ -155,7 +160,7 @@ async function fetchAllReviews(task, movie, options = {}) {
     task.pagesFetched = page
     task.reviews = [...collected]
 
-    if (pageReviews.length < limit || collected.length === previousCount) break
+    if (pageReviews.length < Math.min(limit, 20) || collected.length === previousCount) break
     page += 1
   }
 
@@ -409,6 +414,7 @@ onBeforeUnmount(() => {
       <div class="panel-heading"><span>02 / 获取设置</span></div>
       <div class="settings-grid">
         <Select v-model="requestInterval" :options="gapOptions" label="请求间隔" :disabled="isRunning" />
+        <Select v-model="pageSize" :options="pageSizeOptions" label="每页获取数量" :disabled="isRunning" />
         <Select
           v-model="mode"
           :options="[{ value: 'all', label: '获取全部评论' }, { value: 'keywords', label: '仅显示关键词匹配评论' }]"
@@ -442,7 +448,7 @@ onBeforeUnmount(() => {
         </div>
       </template>
       <p v-if="mode === 'keywords' && !keywordList.length" class="validation-message">关键词筛选模式至少需要输入一个关键词。</p>
-      <p class="notice"><Clock3 :size="14" /> 请求间隔应用于 JavDB 搜索请求和 Reviews 每一页请求。间隔只是降低请求频率，不代表一定不会触发服务端限制。</p>
+      <p class="notice"><Clock3 :size="14" /> 每页数量通过 Reviews API 的 limit 参数设置，默认 20 条，可选 40 条；若上游限制单页返回数量，程序仍会继续翻页，不会因返回不足 40 条而漏掉后续评论。请求间隔只是降低请求频率，不代表一定不会触发服务端限制。</p>
       <div v-if="pageError" class="error-message"><AlertTriangle :size="15" />{{ pageError }}</div>
       <div class="actions">
         <Button v-if="!isRunning" :disabled="!canStart" @click="startQueue"><Play :size="15" /> 开始批量搜索</Button>
