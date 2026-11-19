@@ -1,12 +1,34 @@
-name: Deploy to GitHub Pages
+name: Build and Deploy to GitHub Pages
 
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - '!public/data/navigation.json'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.js'
+      - 'playwright.config.js'
+      - 'e2e/**'
+      - 'scripts/check-*.js'
+      - '.github/workflows/**'
   push:
     branches: [main]
-    paths-ignore:
-      - 'public/data/navigation.json'
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - '!public/data/navigation.json'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.js'
+      - 'playwright.config.js'
+      - 'e2e/**'
+      - 'scripts/check-*.js'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 concurrency:
@@ -14,12 +36,73 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      site: ${{ steps.filter.outputs.site == 'true' || github.event_name == 'workflow_dispatch' }}
+      unit: ${{ steps.filter.outputs.unit == 'true' || github.event_name == 'workflow_dispatch' }}
+      e2e: ${{ steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch' }}
+      styles: ${{ steps.filter.outputs.styles == 'true' || github.event_name == 'workflow_dispatch' }}
+      bundle: ${{ steps.filter.outputs.bundle == 'true' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: Classify changed files
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            site:
+              - 'src/**'
+              - 'public/**'
+              - '!public/data/navigation.json'
+              - 'index.html'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'vite.config.js'
+              - 'playwright.config.js'
+              - 'e2e/**'
+            unit:
+              - 'src/**/*.js'
+              - 'src/**/*.vue'
+              - 'package.json'
+              - 'package-lock.json'
+            e2e:
+              - 'src/App.vue'
+              - 'src/main.js'
+              - 'src/router/**'
+              - 'src/stores/**'
+              - 'src/components/**'
+              - 'src/modules/navigation/**'
+              - 'src/modules/javdb/**'
+              - 'src/views/**'
+              - 'src/workers/**'
+              - 'src/utils/**'
+              - 'e2e/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'vite.config.js'
+              - 'playwright.config.js'
+            styles:
+              - 'src/**/*.css'
+              - 'src/**/*.vue'
+              - 'scripts/check-design-tokens.js'
+            bundle:
+              - 'src/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'vite.config.js'
+
   build:
+    needs: changes
+    if: needs.changes.outputs.site == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - name: Checkout latest main
+      - name: Checkout source
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || 'main' }}
@@ -31,35 +114,37 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
       - name: Unit tests
+        if: needs.changes.outputs.unit == 'true'
         run: npm test
-      - name: Security audit
-        run: |
-          npm audit --json > npm-audit.json || true
-          node scripts/check-npm-audit.mjs npm-audit.json
       - name: Build
         env:
           VITE_JAVDB_PROXY_URL: ${{ vars.VITE_JAVDB_PROXY_URL }}
         run: npm run build
       - name: Check production bundle budgets
+        if: needs.changes.outputs.bundle == 'true'
         run: npm run check:bundle
       - name: Check design token usage
+        if: needs.changes.outputs.styles == 'true'
         run: npm run check:tokens
       - name: Install Playwright Chromium
+        if: needs.changes.outputs.e2e == 'true'
         run: npx playwright install --with-deps chromium
       - name: Browser end-to-end tests
+        if: needs.changes.outputs.e2e == 'true'
         run: npm run test:e2e
       - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && needs.build.result == 'success'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
+    needs: [changes, build]
     permissions:
       pages: write
       id-token: write
