@@ -34,3 +34,38 @@
 - LTX 站点可能调整 API、加密协议或访问策略，届时需要更新脚本。
 - 脚本不读取或展示作品详情，只在内存中解密响应并检查番号字段。
 - JavDB 相关代码和请求路径不属于本脚本范围，保持独立。
+
+
+# JavDB 评论批量搜索（油猴脚本）
+
+这是一个独立运行在 JavDB 页面中的评论批量搜索脚本。原在线工具箱「JavDB 评论搜索」页面继续保留，两者互不替代。
+
+## 安装
+
+1. 安装 Tampermonkey 或 Violentmonkey。
+2. 打开并安装 [JavDB 评论批量搜索脚本](https://raw.githubusercontent.com/shenshou/MyOnlineTools/main/userscripts/javdb-review-batch.user.js)。
+3. 正常登录 JavDB 后，打开 https://javdb.com/，页面右下角会出现「评论批量搜索」入口。
+
+## 功能
+
+- 批量输入番号，逐个搜索 JavDB 影片并获取评论。
+- 影片搜索使用当前 JavDB 页面同源会话；评论继续使用现有 Reviews API 和签名逻辑。
+- 默认 8 秒请求间隔，可选 5、8、10、15 秒。
+- 支持评论关键词筛选、单个番号评论展开、批量复制筛选结果。
+- 支持暂停、继续、停止；成功获取的 movieId、评论页和评论内容会保存在当前标签页的 sessionStorage，刷新页面后可恢复。
+- 断点续跑从失败步骤继续：已保存 movieId 时不会重新搜索，已成功获取的评论页不会重复请求。
+
+## 错误与访问限制
+
+- JavDB 搜索与 Reviews API 错误分开标识。
+- HTTP 403 会暂停队列，不进行自动循环重试；如果检测到 Cloudflare Challenge，会明确提示。
+- HTTP 429 遵循 Retry-After；超过自动等待上限时转为手动暂停。
+- 网络错误及常见 5xx 最多有限重试 2 次，并采用递增等待。
+- 脚本不会绕过验证码、登录要求或上游访问控制，也不保证可以消除 403。
+- 脚本不读取、保存或要求用户提供账号密码、Cookie 或 Token。JavDB 登录 Cookie 由浏览器按同源规则自动处理；Reviews API 请求不携带 JavDB Cookie。
+
+## 注意
+
+- 自动化检查只能验证脚本语法、仓库测试和构建；实际 JavDB 登录态、搜索结果、评论接口及风控表现仍需在用户自己的浏览器中验证。
+- 会话进度只保存在当前标签页的 sessionStorage，关闭标签页后通常会清除；浏览器存储容量不足时，页面会提示无法完整保存。
+- JavDB 或 Reviews API 调整页面结构、接口或签名规则后，脚本可能需要更新。
