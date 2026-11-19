@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { Search, Command, Sun, Moon, Github, Menu, X, House, Compass, Wrench, Globe, ArrowUpRight, MessageSquareText, Database } from 'lucide-vue-next'
+import { Search, Command, Sun, Moon, Github, Menu, X, House, Compass, Wrench, Globe, ArrowUpRight, MessageSquareText } from 'lucide-vue-next'
 import { usePreferences } from './stores/preferences'
 import { tools } from './data/tools'
 import { ToastContainer, ConfirmDialog } from './components/ui'
@@ -72,7 +72,6 @@ const navigationGroups = [
     items: [
       { to: '/navigation', label: '网址导航', icon: Compass, active: () => route.path === '/navigation' },
       { to: '/javdb-reviews', label: 'JavDB 评论搜索', icon: MessageSquareText, active: () => route.path === '/javdb-reviews' },
-      { to: '/ltx-test', label: 'LTX 接口验证', icon: Database, active: () => route.path === '/ltx-test' },
     ],
   },
 ]
