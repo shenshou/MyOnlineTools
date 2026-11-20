@@ -121,8 +121,6 @@ jobs:
         if: needs.changes.outputs.unit == 'true'
         run: npm test
       - name: Build
-        env:
-          VITE_JAVDB_PROXY_URL: ${{ vars.VITE_JAVDB_PROXY_URL }}
         run: npm run build
       - name: Check production bundle budgets
         if: needs.changes.outputs.bundle == 'true'
