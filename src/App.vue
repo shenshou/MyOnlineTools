@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { Search, Command, Sun, Moon, Github, Menu, X, House, Compass, Wrench, Globe, ArrowUpRight, MessageSquareText } from 'lucide-vue-next'
+import { Search, Command, Sun, Moon, Github, Menu, X, House, Compass, Wrench, Globe, ArrowUpRight } from 'lucide-vue-next'
 import { usePreferences } from './stores/preferences'
 import { tools } from './data/tools'
 import { ToastContainer, ConfirmDialog } from './components/ui'
@@ -72,7 +72,6 @@ const navigationGroups = [
     title: '资源管理',
     items: [
       { to: '/navigation', label: '网址导航', icon: Compass, active: () => route.path === '/navigation' },
-      { to: '/javdb-reviews', label: 'JavDB 评论搜索', icon: MessageSquareText, active: () => route.path === '/javdb-reviews' },
     ],
   },
 ]

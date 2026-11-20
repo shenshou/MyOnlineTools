@@ -80,9 +80,7 @@ jobs:
               - 'src/stores/**'
               - 'src/components/**'
               - 'src/modules/navigation/**'
-              - 'src/modules/javdb/**'
               - 'src/views/NavigationView.vue'
-              - 'src/views/JavDbReviewsView.vue'
               - 'src/views/ToolView.vue'
               - 'src/workers/**'
               - 'src/utils/toolActions.js'
@@ -123,8 +121,6 @@ jobs:
         if: needs.changes.outputs.unit == 'true'
         run: npm test
       - name: Build
-        env:
-          VITE_JAVDB_PROXY_URL: ${{ vars.VITE_JAVDB_PROXY_URL }}
         run: npm run build
       - name: Check production bundle budgets
         if: needs.changes.outputs.bundle == 'true'
