@@ -92,10 +92,10 @@ MyOnlineTools 收集并整合常用的小型在线工具，重点关注使用效
 ## 质量保障与测试
 
 - 使用 Vitest 运行单元测试和共享组件测试。
-- 每次代码提交的 GitHub Actions 质量门禁包括：锁定依赖安装、单元测试、依赖安全审计、生产构建、构建体积预算、设计令牌检查和 Playwright E2E；全部通过后才部署 GitHub Pages。
+- GitHub Actions 按变更路径和任务条件选择性执行检查；并非每次提交都会运行全部测试。单元测试、Playwright E2E、构建体积预算和设计令牌检查分别根据相关文件变更触发，手动运行可执行完整检查。PR 用于验证，不直接部署；符合条件的 main 分支构建成功后才部署 GitHub Pages。
 - 当前包含 63 项 Vitest 单元/组件测试，以及 10 项 Playwright 浏览器 E2E 测试，覆盖工具流程、导航管理、GitHub 授权和保存冲突恢复。
-- Lighthouse 移动端性能审计独立运行：每周一自动执行，也可在 GitHub Actions 中手动触发；报告作为 workflow artifact 保存，不阻塞日常部署。
-- 安全模型、Token 使用边界和数据恢复方式见 [安全说明](docs/SECURITY.md)；模块职责与扩展方式见 [架构说明](docs/ARCHITECTURE.md)。
+- Lighthouse 移动端性能审计独立运行：每月 1 日 UTC 03:17 自动执行，也可在 GitHub Actions 中手动触发；报告作为 workflow artifact 保存，不阻塞日常部署。
+- 日常开发、提交批次、测试选择与 CI 执行原则见 [开发与 CI 规范](docs/DEVELOPMENT_STANDARDS.md)；安全模型、Token 使用边界和数据恢复方式见 [安全说明](docs/SECURITY.md)；模块职责与扩展方式见 [架构说明](docs/ARCHITECTURE.md)。
 
 ## 性能基线
 
@@ -197,11 +197,11 @@ MyOnlineTools/
 项目通过 **GitHub Actions + GitHub Pages** 自动构建和部署。
 
 - 部署工作流：`.github/workflows/deploy.yml`
-- 触发条件：向 `main` 分支推送代码，或在 GitHub Actions 页面手动运行工作流。
-- 工作流使用 `npm ci` 安装锁定依赖；执行 `npm test`、`npm audit --audit-level=moderate`、`npm run build`、`npm run check:bundle`、`npm run check:tokens` 和 `npm run test:e2e`，全部通过后部署。
-- 性能审计工作流：`.github/workflows/performance.yml`，每周一 UTC 03:17 自动运行，也可手动触发；不会参与日常 Pages 部署门禁。
+- 触发条件：针对 `main` 的 PR 或向 `main` 推送代码，且变更文件命中工作流配置的路径过滤规则；也支持手动运行。工作流再根据变更范围选择需要执行的检查。
+- 工作流使用 `npm ci` 安装锁定依赖，并按变更范围执行单元测试、生产构建、构建体积预算、设计令牌检查和 Playwright E2E；依赖安全审计由独立工作流负责。符合条件的 main 分支构建成功后部署。
+- 性能审计工作流：`.github/workflows/performance.yml`，每月 1 日 UTC 03:17 自动运行，也可手动触发；不会参与日常 Pages 部署门禁。
 - 例外：仅修改 `public/data/navigation.json` 时不会触发 Pages 构建；导航页面直接从 GitHub 仓库读取最新 JSON。
-- 本地质量检查：`npm test`、`npm run check:bundle`、`npm run check:tokens`；E2E 使用 `npm run test:e2e`。
+- 本地质量检查按改动范围选择：`npm test`、`npm run build`、`npm run check:bundle`、`npm run check:tokens`；必要时运行 `npm run test:e2e`。详细提交与验证原则见 [开发与 CI 规范](docs/DEVELOPMENT_STANDARDS.md)。
 - 发布目录：`dist/`
 - Vite 公共基础路径：`/MyOnlineTools/`
 
